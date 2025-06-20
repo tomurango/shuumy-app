@@ -6,12 +6,42 @@ import 'package:path/path.dart' as p;
 
 import '../models/hobby.dart';
 import '../providers/hobby_list_provider.dart';
+import '../services/background_image_service.dart';
 import 'add_hobby_screen.dart';
 import 'edit_hobby_screen.dart';
 import 'detail_hobby_screen.dart';
+import 'settings_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  ImageProvider? _backgroundImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBackgroundImage();
+  }
+
+  Future<void> _loadBackgroundImage() async {
+    try {
+      final config = await BackgroundImageService.getCurrentConfig();
+      final imageProvider = await config.getImageProvider();
+      setState(() {
+        _backgroundImage = imageProvider;
+      });
+    } catch (e) {
+      // エラーの場合はデフォルト画像を使用
+      setState(() {
+        _backgroundImage = const AssetImage('assets/background.png');
+      });
+    }
+  }
 
   void _showContextMenu(BuildContext context, Hobby hobby, WidgetRef ref) {
     showModalBottomSheet(
@@ -126,7 +156,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final hobbies = ref.watch(hobbyListProvider);
 
     return Scaffold(
@@ -136,10 +166,17 @@ class HomeScreen extends ConsumerWidget {
         children: [
           // 背景画像
           Positioned.fill(
-            child: Image.asset(
-              'assets/background.png',
-              fit: BoxFit.cover,
-            ),
+            child: _backgroundImage != null
+                ? Image(
+                    image: _backgroundImage!,
+                    fit: BoxFit.cover,
+                  )
+                : Container(
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
           ),
           // アイコン一覧
           SafeArea(
@@ -250,8 +287,18 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.settings, size: 36, color: Colors.white),
-                    onPressed: () {
-                      // 設定画面へ
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      );
+                      
+                      // 設定画面から戻ってきた時に背景を再読み込み
+                      if (result == true) {
+                        _loadBackgroundImage();
+                      }
                     },
                   ),
                 ],

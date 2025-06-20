@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シューマイ - 趣味管理アプリ サポート</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #009977, #00B386);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0, 153, 119, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .card h2 {
+            color: #009977;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #00B386;
+            padding-bottom: 10px;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .feature {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .feature:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #009977;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            background: #007a63;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #009977;
+            color: #009977;
+        }
+        
+        .btn-outline:hover {
+            background: #009977;
+            color: white;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            border-top: 1px solid #eee;
+            margin-top: 40px;
+        }
+        
+        .links {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .header p {
+                font-size: 1em;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>シューマイ</h1>
+            <p>シンプルで美しい趣味管理アプリ</p>
+        </div>
+
+        <div class="card">
+            <h2>🎯 アプリについて</h2>
+            <p>シューマイは、あなたの趣味を美しく整理し、活動記録を残すためのアプリです。直感的な操作で、趣味ライフをもっと楽しくします。</p>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <h3>シンプル操作</h3>
+                <p>直感的なインターフェースで誰でも簡単に使えます</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📷</div>
+                <h3>写真付きメモ</h3>
+                <p>思い出の写真と一緒に活動記録を保存できます</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🎨</div>
+                <h3>カスタマイズ</h3>
+                <p>背景画像を変更して自分らしくパーソナライズ</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔒</div>
+                <h3>プライバシー</h3>
+                <p>全てのデータは端末内に保存で安心・安全</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📞 サポート・お問い合わせ</h2>
+            <p>アプリに関するご質問、不具合報告、機能のご要望などがございましたら、お気軽にお問い合わせください。</p>
+            
+            <div class="links">
+                <a href="mailto:shuumyapp@gmail.com" class="btn">📧 メールで問い合わせ</a>
+                <a href="[GOOGLE_FORM_URL]" class="btn btn-outline">📝 お問い合わせフォーム</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📋 法的事項</h2>
+            <div class="links">
+                <a href="terms.html" class="btn btn-outline">利用規約</a>
+                <a href="privacy.html" class="btn btn-outline">プライバシーポリシー</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📱 ダウンロード</h2>
+            <p>App Storeからダウンロードできます。</p>
+            <div class="links">
+                <a href="[APP_STORE_URL]" class="btn">App Store でダウンロード</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2025 シューマイ開発チーム. All rights reserved.</p>
+        <p>Version 1.0.0</p>
+    </div>
+</body>
+</html>
