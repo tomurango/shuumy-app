@@ -184,12 +184,21 @@ class HomeScreen extends ConsumerWidget {
                           children: [
                             Hero(
                               tag: 'hobby_image_${hobby.id}',
-                              child: CircleAvatar(
-                                radius: 32,
-                                backgroundColor: Colors.white.withOpacity(0.2),
-                                backgroundImage: exists ? FileImage(file) : null,
+                              child: Container(
+                                width: 64,
+                                height: 64,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: Colors.white.withOpacity(0.2),
+                                  image: exists
+                                      ? DecorationImage(
+                                          image: FileImage(file),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
+                                ),
                                 child: !exists
-                                    ? const Icon(Icons.broken_image, color: Colors.white)
+                                    ? const Icon(Icons.broken_image, color: Colors.white, size: 32)
                                     : null,
                               ),
                             ),

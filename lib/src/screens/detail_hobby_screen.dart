@@ -108,7 +108,7 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(50),
+                              borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.1),
@@ -119,10 +119,19 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
                             ),
                             child: Hero(
                               tag: 'hobby_image_${widget.hobby.id}',
-                              child: CircleAvatar(
-                                radius: 40,
-                                backgroundColor: Colors.grey[200],
-                                backgroundImage: _imageFile != null ? FileImage(_imageFile!) : null,
+                              child: Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  color: Colors.grey[200],
+                                  image: _imageFile != null
+                                      ? DecorationImage(
+                                          image: FileImage(_imageFile!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
+                                ),
                                 child: _imageFile == null
                                     ? Icon(Icons.broken_image, size: 30, color: Colors.grey[600])
                                     : null,
