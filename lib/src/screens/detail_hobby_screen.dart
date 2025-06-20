@@ -270,7 +270,7 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
                   _loadMemos();
                 }
               },
-              backgroundColor: const Color(0xFF1DA1F2),
+              backgroundColor: const Color(0xFF00B386),
               child: const Icon(Icons.add, color: Colors.white),
             ),
           ),
