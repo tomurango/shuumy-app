@@ -8,6 +8,7 @@ import '../models/hobby.dart';
 import '../providers/hobby_list_provider.dart';
 import 'add_hobby_screen.dart';
 import 'edit_hobby_screen.dart';
+import 'detail_hobby_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -169,17 +170,28 @@ class HomeScreen extends ConsumerWidget {
                       final exists = file.existsSync();
 
                       return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DetailHobbyScreen(hobby: hobby),
+                            ),
+                          );
+                        },
                         onLongPress: () => _showContextMenu(context, hobby, ref),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircleAvatar(
-                              radius: 32,
-                              backgroundColor: Colors.white.withOpacity(0.2),
-                              backgroundImage: exists ? FileImage(file) : null,
-                              child: !exists
-                                  ? const Icon(Icons.broken_image, color: Colors.white)
-                                  : null,
+                            Hero(
+                              tag: 'hobby_image_${hobby.id}',
+                              child: CircleAvatar(
+                                radius: 32,
+                                backgroundColor: Colors.white.withOpacity(0.2),
+                                backgroundImage: exists ? FileImage(file) : null,
+                                child: !exists
+                                    ? const Icon(Icons.broken_image, color: Colors.white)
+                                    : null,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
