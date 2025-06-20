@@ -21,6 +21,7 @@ class HobbyListNotifier extends StateNotifier<List<Hobby>> {
     final rebuilt = hobbies.map((hobby) {
       final fullPath = hobby.getImagePath(dir.path);
       return Hobby(
+        id: hobby.id,
         title: hobby.title,
         memo: hobby.memo,
         imageFileName: hobby.imageFileName, // imagePath はUIで構築
@@ -38,7 +39,13 @@ class HobbyListNotifier extends StateNotifier<List<Hobby>> {
   }
 
   Future<void> remove(Hobby hobby) async {
-    final newList = state.where((h) => h != hobby).toList();
+    final newList = state.where((h) => h.id != hobby.id).toList();
+    state = newList;
+    await HobbyJsonService.saveHobbies(newList);
+  }
+
+  Future<void> update(Hobby updatedHobby) async {
+    final newList = state.map((h) => h.id == updatedHobby.id ? updatedHobby : h).toList();
     state = newList;
     await HobbyJsonService.saveHobbies(newList);
   }

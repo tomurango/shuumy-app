@@ -3,24 +3,45 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/hobby_storage.dart';
 import '../models/hobby.dart';
-import '../services/hobby_json_service.dart';
 import '../providers/hobby_list_provider.dart';
 
-class AddHobbyScreen extends ConsumerStatefulWidget {
-  const AddHobbyScreen({super.key});
+class EditHobbyScreen extends ConsumerStatefulWidget {
+  final Hobby hobby;
+  
+  const EditHobbyScreen({super.key, required this.hobby});
 
   @override
-  ConsumerState<AddHobbyScreen> createState() => _AddHobbyScreenState();
+  ConsumerState<EditHobbyScreen> createState() => _EditHobbyScreenState();
 }
 
-class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _memoController = TextEditingController();
+class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
+  late TextEditingController _titleController;
+  late TextEditingController _memoController;
 
   File? _selectedImage;
+  File? _currentImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.hobby.title);
+    _memoController = TextEditingController(text: widget.hobby.memo ?? '');
+    _loadCurrentImage();
+  }
+
+  Future<void> _loadCurrentImage() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final imagePath = path.join(dir.path, 'images', widget.hobby.imageFileName);
+    final file = File(imagePath);
+    if (file.existsSync()) {
+      setState(() {
+        _currentImage = file;
+      });
+    }
+  }
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(
@@ -38,22 +59,24 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("趣味を追加"),
+        title: const Text("趣味を編集"),
         backgroundColor: Colors.green[700],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // アイコン画像のプレビュー
             GestureDetector(
               onTap: _pickImage,
               child: CircleAvatar(
                 radius: 40,
                 backgroundColor: Colors.grey[300],
-                backgroundImage:
-                    _selectedImage != null ? FileImage(_selectedImage!) : null,
-                child: _selectedImage == null
+                backgroundImage: _selectedImage != null 
+                    ? FileImage(_selectedImage!)
+                    : _currentImage != null 
+                        ? FileImage(_currentImage!)
+                        : null,
+                child: (_selectedImage == null && _currentImage == null)
                     ? const Icon(Icons.add_a_photo, size: 32, color: Colors.black45)
                     : null,
               ),
@@ -81,13 +104,6 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
                 final title = _titleController.text.trim();
                 final memo = _memoController.text.trim();
 
-                if (_selectedImage == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("アイコン画像を選んでください")),
-                  );
-                  return;
-                }
-
                 if (title.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("趣味の名前を入力してください")),
@@ -95,30 +111,33 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
                   return;
                 }
 
-                // ファイルを保存ディレクトリにコピー
-                final savedImageFile = await HobbyStorageService.saveImageToLocalDirectory(_selectedImage!);
-
-                // savedImageFile.path を Hobbyモデルなどで使えるように保存
-                print('保存先: ${savedImageFile.path}');
-
-                final fileName = path.basename(savedImageFile.path);
+                String imageFileName = widget.hobby.imageFileName;
                 
-                // Hobbyインスタンス保存処理
-                final newHobby = Hobby(
-                  id: const Uuid().v4(),
+                if (_selectedImage != null) {
+                  final savedImageFile = await HobbyStorageService.saveImageToLocalDirectory(_selectedImage!);
+                  imageFileName = path.basename(savedImageFile.path);
+                  
+                  final dir = await getApplicationDocumentsDirectory();
+                  final oldImagePath = path.join(dir.path, 'images', widget.hobby.imageFileName);
+                  final oldImageFile = File(oldImagePath);
+                  if (oldImageFile.existsSync()) {
+                    await oldImageFile.delete();
+                  }
+                }
+
+                final updatedHobby = Hobby(
+                  id: widget.hobby.id,
                   title: title,
                   memo: memo.isEmpty ? null : memo,
-                  imageFileName: fileName,
+                  imageFileName: imageFileName,
                 );
 
-                final hobbies = await HobbyJsonService.loadHobbies();
-                hobbies.add(newHobby);
-                await HobbyJsonService.saveHobbies(hobbies);
-
-                ref.read(hobbyListProvider.notifier).add(newHobby);
-
+                ref.read(hobbyListProvider.notifier).update(updatedHobby);
 
                 Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('「$title」を更新しました')),
+                );
               },
               icon: const Icon(Icons.save),
               label: const Text('保存'),
@@ -127,5 +146,12 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _memoController.dispose();
+    super.dispose();
   }
 }
