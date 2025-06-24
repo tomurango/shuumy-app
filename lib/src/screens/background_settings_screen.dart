@@ -119,7 +119,7 @@ class _BackgroundSettingsScreenState extends State<BackgroundSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('デフォルト背景に戻しました'),
+            content: Text('白背景に戻しました'),
             backgroundColor: Colors.green,
           ),
         );
@@ -255,11 +255,11 @@ class _BackgroundSettingsScreenState extends State<BackgroundSettingsScreen> {
                         
                         const SizedBox(height: 12),
                         
-                        // デフォルトに戻す
+                        // 白背景に戻す
                         _buildActionButton(
                           icon: Icons.restore,
-                          title: 'デフォルトに戻す',
-                          subtitle: '元の背景画像に戻します',
+                          title: '白背景に戻す',
+                          subtitle: '背景画像を削除して白背景にします',
                           onTap: _resetToDefault,
                           isDestructive: false,
                         ),

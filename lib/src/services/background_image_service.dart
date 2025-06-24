@@ -105,9 +105,9 @@ class BackgroundImageConfig {
     this.customFileName,
   });
 
-  /// デフォルト設定
+  /// デフォルト設定（白背景）
   factory BackgroundImageConfig.defaultConfig() {
-    return const BackgroundImageConfig(type: BackgroundType.defaultAsset);
+    return const BackgroundImageConfig(type: BackgroundType.none);
   }
 
   /// カスタム画像設定
@@ -122,7 +122,7 @@ class BackgroundImageConfig {
     return BackgroundImageConfig(
       type: BackgroundType.values.firstWhere(
         (e) => e.name == json['type'],
-        orElse: () => BackgroundType.defaultAsset,
+        orElse: () => BackgroundType.none,
       ),
       customFileName: json['customFileName'],
     );
@@ -138,8 +138,8 @@ class BackgroundImageConfig {
   /// 背景画像のImageProviderを取得
   Future<ImageProvider?> getImageProvider() async {
     switch (type) {
-      case BackgroundType.defaultAsset:
-        return const AssetImage('assets/background.png');
+      case BackgroundType.none:
+        return null; // 白背景（画像なし）
       case BackgroundType.custom:
         if (customFileName != null) {
           final file = await BackgroundImageService.getCustomBackgroundFile(customFileName!);
@@ -147,13 +147,13 @@ class BackgroundImageConfig {
             return FileImage(file);
           }
         }
-        // カスタム画像が見つからない場合はデフォルトに戻す
-        return const AssetImage('assets/background.png');
+        // カスタム画像が見つからない場合は白背景
+        return null;
     }
   }
 }
 
 enum BackgroundType {
-  defaultAsset,  // デフォルトのアセット画像
+  none,          // 背景画像なし（白背景）
   custom,        // ユーザーが選択したカスタム画像
 }

@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../models/hobby.dart';
 import '../providers/hobby_list_provider.dart';
 import '../services/background_image_service.dart';
+import '../services/memo_service.dart';
 import 'add_hobby_screen.dart';
 import 'edit_hobby_screen.dart';
 import 'detail_hobby_screen.dart';
@@ -31,14 +32,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _loadBackgroundImage() async {
     try {
       final config = await BackgroundImageService.getCurrentConfig();
-      final imageProvider = await config.getImageProvider();
-      setState(() {
-        _backgroundImage = imageProvider;
-      });
+      if (config.type == BackgroundType.custom) {
+        final imageProvider = await config.getImageProvider();
+        setState(() {
+          _backgroundImage = imageProvider;
+        });
+      } else {
+        // デフォルトは背景画像なし（白背景）
+        setState(() {
+          _backgroundImage = null;
+        });
+      }
     } catch (e) {
-      // エラーの場合はデフォルト画像を使用
+      // エラーの場合は白背景
       setState(() {
-        _backgroundImage = const AssetImage('assets/background.png');
+        _backgroundImage = null;
       });
     }
   }
@@ -160,11 +168,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final hobbies = ref.watch(hobbyListProvider);
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 背景画像
+          // 背景（カスタム画像または白背景）
           Positioned.fill(
             child: _backgroundImage != null
                 ? Image(
@@ -172,10 +179,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     fit: BoxFit.cover,
                   )
                 : Container(
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    color: Colors.white,
                   ),
           ),
           // アイコン一覧
@@ -191,67 +195,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   final dirPath = snapshot.data!.path;
 
-                  return GridView.builder(
+                  return ListView.builder(
                     itemCount: hobbies.length,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      mainAxisSpacing: 24,
-                      crossAxisSpacing: 24,
-                      childAspectRatio: 0.75,
-                    ),
+                    padding: const EdgeInsets.only(bottom: 100), // FABのための余白
                     itemBuilder: (context, index) {
                       final hobby = hobbies[index];
                       final imagePath = p.join(dirPath, 'images', hobby.imageFileName);
                       final file = File(imagePath);
                       final exists = file.existsSync();
 
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => DetailHobbyScreen(hobby: hobby),
-                            ),
-                          );
-                        },
-                        onLongPress: () => _showContextMenu(context, hobby, ref),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Hero(
-                              tag: 'hobby_image_${hobby.id}',
-                              child: Container(
-                                width: 64,
-                                height: 64,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16),
-                                  color: Colors.white.withOpacity(0.2),
-                                  image: exists
-                                      ? DecorationImage(
-                                          image: FileImage(file),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
-                                ),
-                                child: !exists
-                                    ? const Icon(Icons.broken_image, color: Colors.white, size: 32)
-                                    : null,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              hobby.title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              softWrap: false,
-                            ),
-                          ],
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildHobbyCard(
+                          hobby: hobby,
+                          imageFile: exists ? file : null,
+                          dirPath: dirPath,
                         ),
                       );
                     },
@@ -260,52 +218,196 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-          // ドック風ボタン
+          // フローティングアクションボタン
           Positioned(
-            bottom: 24,
-            left: 24,
-            right: 24,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.add_circle, size: 36, color: Colors.white),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AddHobbyScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.settings, size: 36, color: Colors.white),
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SettingsScreen(),
-                        ),
-                      );
-                      
-                      // 設定画面から戻ってきた時に背景を再読み込み
-                      if (result == true) {
-                        _loadBackgroundImage();
-                      }
-                    },
-                  ),
-                ],
-              ),
+            bottom: 20,
+            right: 20,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: "settings",
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SettingsScreen(),
+                      ),
+                    );
+                    
+                    if (result == true) {
+                      _loadBackgroundImage();
+                    }
+                  },
+                  backgroundColor: Colors.white.withOpacity(0.9),
+                  child: const Icon(Icons.settings, color: Color(0xFF009977)),
+                ),
+                const SizedBox(height: 16),
+                FloatingActionButton(
+                  heroTag: "add",
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AddHobbyScreen(),
+                      ),
+                    );
+                  },
+                  backgroundColor: const Color(0xFF009977),
+                  child: const Icon(Icons.add, color: Colors.white),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHobbyCard({
+    required Hobby hobby,
+    required File? imageFile,
+    required String dirPath,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetailHobbyScreen(hobby: hobby),
+          ),
+        );
+      },
+      onLongPress: () => _showContextMenu(context, hobby, ref),
+      child: Container(
+        height: 120, // カード全体の高さを固定
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // 左側：アイコン画像エリア
+            Container(
+              width: 100,
+              height: 100,
+              margin: const EdgeInsets.all(10),
+              child: Hero(
+                tag: 'hobby_image_${hobby.id}',
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey[100],
+                    image: imageFile != null
+                        ? DecorationImage(
+                            image: FileImage(imageFile),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: imageFile == null
+                      ? Icon(
+                          Icons.broken_image,
+                          color: Colors.grey[400],
+                          size: 40,
+                        )
+                      : null,
+                ),
+              ),
+            ),
+            
+            // 右側：情報エリア
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 趣味名
+                    Text(
+                      hobby.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    // メモ数と更新情報
+                    FutureBuilder<int>(
+                      future: MemoService.getMemoCountForHobby(hobby.id),
+                      builder: (context, snapshot) {
+                        final memoCount = snapshot.data ?? 0;
+                        return Row(
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              size: 16,
+                              color: Colors.grey[600],
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$memoCount件のメモ',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    
+                    const SizedBox(height: 4),
+                    
+                    // 簡単な説明文または最終更新
+                    if (hobby.memo != null && hobby.memo!.isNotEmpty)
+                      Text(
+                        hobby.memo!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else
+                      Text(
+                        'タップして詳細を確認',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // 右端：矢印アイコン
+            Container(
+              padding: const EdgeInsets.only(right: 16),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.grey[400],
+                size: 16,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
