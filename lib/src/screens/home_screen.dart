@@ -51,30 +51,98 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _showContextMenu(BuildContext context, Hobby hobby, WidgetRef ref) {
+
+  void _showOptionsMenu(BuildContext context, Hobby hobby, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white.withOpacity(0.9),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              hobby.title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      backgroundColor: Colors.transparent,
+      builder: (context) => FutureBuilder<Directory>(
+        future: getApplicationDocumentsDirectory(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: const Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          final dirPath = snapshot.data!.path;
+          final imagePath = p.join(dirPath, 'images', hobby.imageFileName);
+          final file = File(imagePath);
+          final exists = file.existsSync();
+
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _buildMenuButton(
-                  context,
-                  icon: Icons.edit,
-                  label: '編集',
+                // ハンドル
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                
+                // タイトル
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey[100],
+                          image: exists
+                              ? DecorationImage(
+                                  image: FileImage(file),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: !exists
+                            ? Icon(
+                                Icons.photo,
+                                color: Colors.grey[400],
+                                size: 24,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          hobby.title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // 編集オプション
+                _buildOptionTile(
+                  icon: Icons.edit_outlined,
+                  title: '編集',
+                  subtitle: '趣味の情報を変更',
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -85,50 +153,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     );
                   },
                 ),
-                _buildMenuButton(
-                  context,
-                  icon: Icons.delete,
-                  label: '削除',
-                  color: Colors.red,
+                
+                // 削除オプション
+                _buildOptionTile(
+                  icon: Icons.delete_outline,
+                  title: '削除',
+                  subtitle: '趣味とメモをすべて削除',
                   onTap: () {
                     Navigator.pop(context);
                     _showDeleteConfirmation(context, hobby, ref);
                   },
+                  isDestructive: true,
                 ),
+                
+                const SizedBox(height: 20),
               ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildMenuButton(
-    BuildContext context, {
+  Widget _buildOptionTile({
     required IconData icon,
-    required String label,
+    required String title,
+    required String subtitle,
     required VoidCallback onTap,
-    Color? color,
+    bool isDestructive = false,
   }) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 25),
-        decoration: BoxDecoration(
-          color: (color ?? Colors.blue).withOpacity(0.1),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: color ?? Colors.blue),
-        ),
-        child: Column(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
           children: [
-            Icon(icon, size: 30, color: color ?? Colors.blue),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: color ?? Colors.blue,
-                fontWeight: FontWeight.bold,
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isDestructive 
+                    ? Colors.red[50] 
+                    : Colors.grey[100],
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: Icon(
+                icon,
+                color: isDestructive 
+                    ? Colors.red[600] 
+                    : Colors.grey[700],
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: isDestructive 
+                          ? Colors.red[600] 
+                          : Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey[400],
             ),
           ],
         ),
@@ -140,27 +245,132 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('削除確認'),
-        content: Text('「${hobby.title}」を削除しますか？'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange[600],
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text('趣味を削除'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '「${hobby.title}」を削除しますか？',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.red[600],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'この趣味に関連するメモもすべて削除されます。この操作は取り消せません。',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.red[800],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('キャンセル'),
+            child: Text(
+              'キャンセル',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-          TextButton(
-            onPressed: () {
+          ElevatedButton(
+            onPressed: () async {
               Navigator.pop(context);
-              ref.read(hobbyListProvider.notifier).remove(hobby);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('「${hobby.title}」を削除しました')),
-              );
+              
+              // 関連するメモも削除
+              await _deleteHobbyWithMemos(hobby, ref);
+              
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('「${hobby.title}」を削除しました'),
+                    backgroundColor: Colors.green[600],
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                );
+              }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('削除'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              '削除',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _deleteHobbyWithMemos(Hobby hobby, WidgetRef ref) async {
+    try {
+      // 関連するメモを削除
+      final memos = await MemoService.loadMemosForHobby(hobby.id);
+      for (final memo in memos) {
+        await MemoService.deleteMemo(memo.id);
+      }
+      
+      // 趣味を削除
+      ref.read(hobbyListProvider.notifier).remove(hobby);
+    } catch (e) {
+      // エラーハンドリング
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('削除中にエラーが発生しました: $e'),
+            backgroundColor: Colors.red[600],
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -195,6 +405,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   final dirPath = snapshot.data!.path;
 
+                  if (hobbies.isEmpty) {
+                    return _buildEmptyState();
+                  }
+                  
                   return ListView.builder(
                     itemCount: hobbies.length,
                     padding: const EdgeInsets.only(bottom: 100), // FABのための余白
@@ -278,7 +492,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         );
       },
-      onLongPress: () => _showContextMenu(context, hobby, ref),
       child: Container(
         height: 120, // カード全体の高さを固定
         decoration: BoxDecoration(
@@ -330,20 +543,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // 趣味名
-                    Text(
-                      hobby.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                    Flexible(
+                      child: Text(
+                        hobby.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     
                     // メモ数と更新情報
                     FutureBuilder<int>(
@@ -354,15 +570,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           children: [
                             Icon(
                               Icons.chat_bubble_outline,
-                              size: 16,
+                              size: 14,
                               color: Colors.grey[600],
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '$memoCount件のメモ',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                '$memoCount件のメモ',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
                               ),
                             ),
                           ],
@@ -370,45 +588,219 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     ),
                     
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     
                     // 簡単な説明文または最終更新
-                    if (hobby.memo != null && hobby.memo!.isNotEmpty)
-                      Text(
-                        hobby.memo!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      )
-                    else
-                      Text(
-                        'タップして詳細を確認',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
+                    Flexible(
+                      child: hobby.memo != null && hobby.memo!.isNotEmpty
+                          ? Text(
+                              hobby.memo!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          : Text(
+                              'タップして詳細を確認',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                    ),
                   ],
                 ),
               ),
             ),
             
-            // 右端：矢印アイコン
+            // 右端：オプションボタン
             Container(
-              padding: const EdgeInsets.only(right: 16),
-              child: Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.grey[400],
-                size: 16,
+              padding: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                onPressed: () => _showOptionsMenu(context, hobby, ref),
+                icon: Icon(
+                  Icons.more_vert,
+                  color: Colors.grey[600],
+                  size: 20,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
+                padding: const EdgeInsets.all(6),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // メインアイコン
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: const Color(0xFF009977).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(60),
+              ),
+              child: const Icon(
+                Icons.favorite_border,
+                size: 60,
+                color: Color(0xFF009977),
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // メインメッセージ
+            const Text(
+              'あなたの趣味を\n記録してみませんか？',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // サブメッセージ
+            Text(
+              '趣味を追加して、活動記録を\n写真やメモで残しましょう',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            
+            const SizedBox(height: 40),
+            
+            // 行動誘導ボタン
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddHobbyScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                '最初の趣味を追加',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF009977),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                elevation: 2,
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // 機能紹介
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey[200]!),
+              ),
+              child: Column(
+                children: [
+                  _buildFeatureItem(
+                    icon: Icons.photo_camera,
+                    title: '写真で記録',
+                    description: 'アイコンやメモに写真を添付',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFeatureItem(
+                    icon: Icons.edit_note,
+                    title: 'メモを残す',
+                    description: '活動の記録や感想を保存',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFeatureItem(
+                    icon: Icons.palette,
+                    title: 'カスタマイズ',
+                    description: '背景画像で自分らしく',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFF009977).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Icon(
+            icon,
+            color: const Color(0xFF009977),
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
