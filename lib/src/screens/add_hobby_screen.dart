@@ -6,8 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../services/hobby_storage.dart';
 import '../models/hobby.dart';
+import '../models/category.dart';
 import '../services/hobby_json_service.dart';
 import '../providers/hobby_list_provider.dart';
+import '../providers/category_provider.dart';
+import '../providers/premium_provider.dart';
+import 'premium_plan_selection_screen.dart';
 
 class AddHobbyScreen extends ConsumerStatefulWidget {
   const AddHobbyScreen({super.key});
@@ -21,6 +25,7 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
   final TextEditingController _memoController = TextEditingController();
 
   File? _selectedImage;
+  String _selectedCategoryId = 'default_all'; // デフォルトは「すべて」カテゴリー
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(
@@ -90,11 +95,15 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
               final savedImageFile = await HobbyStorageService.saveImageToLocalDirectory(_selectedImage!);
               final fileName = path.basename(savedImageFile.path);
               
+              final now = DateTime.now();
               final newHobby = Hobby(
                 id: const Uuid().v4(),
                 title: title,
                 memo: memo.isEmpty ? null : memo,
                 imageFileName: fileName,
+                categoryId: _selectedCategoryId,
+                createdAt: now,
+                updatedAt: now,
               );
 
               final hobbies = await HobbyJsonService.loadHobbies();
@@ -276,7 +285,395 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
                   ),
 
                   const SizedBox(height: 20),
+
+                  // カテゴリー選択セクション
+                  _buildCategorySelector(),
+
+                  const SizedBox(height: 20),
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// カテゴリー選択ウィジェットを構築
+  Widget _buildCategorySelector() {
+    final categories = ref.watch(categoryListProvider);
+    final isPremium = ref.watch(premiumProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "カテゴリー",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedCategoryId,
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  // プレミアム機能チェック
+                  if (newValue != 'default_all' && !isPremium) {
+                    _showPremiumRequiredDialog();
+                    return;
+                  }
+                  
+                  setState(() {
+                    _selectedCategoryId = newValue;
+                  });
+                }
+              },
+              items: categories.map((Category category) {
+                return DropdownMenuItem<String>(
+                  value: category.id,
+                  child: Row(
+                    children: [
+                      Icon(
+                        category.id == 'default_all' 
+                            ? Icons.all_inclusive 
+                            : Icons.folder_outlined,
+                        size: 20,
+                        color: category.id == 'default_all' 
+                            ? const Color(0xFF009977)
+                            : Colors.grey[600],
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        category.name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: category.id == 'default_all' || isPremium
+                              ? Colors.black87
+                              : Colors.grey[500],
+                        ),
+                      ),
+                      if (category.id != 'default_all' && !isPremium) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.lock_outline,
+                          size: 16,
+                          color: Colors.grey[500],
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }).toList(),
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: Colors.grey[600],
+              ),
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ),
+        
+        if (!isPremium && categories.length > 1) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Colors.blue[600],
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'カスタムカテゴリーはプレミアム機能です',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue[800],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// プレミアム機能が必要な場合のダイアログを表示
+  void _showPremiumRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.star,
+              color: Colors.amber[600],
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text('プレミアム機能'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'カスタムカテゴリーはプレミアム機能です。',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.amber[600],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'プレミアム版では無制限のカテゴリー作成が可能です',
+                      style: TextStyle(
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'キャンセル',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showPremiumPurchaseDialog();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber[600],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'プレミアムを見る',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// プレミアム購入ダイアログを表示
+  void _showPremiumPurchaseDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.star,
+              color: Colors.amber[600],
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text('プレミアム版にアップグレード'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'カスタムカテゴリー機能を利用するには、プレミアム版が必要です。',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.amber[600],
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'プレミアム版の特典',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '• 無制限のカテゴリー作成\n• カテゴリー別背景画像\n• カテゴリーの管理機能\n• 将来の新機能も利用可能',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '月額',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.amber[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '¥300',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.amber[600],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' / 年額',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.amber[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '¥2,500',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.amber[600],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' / 買い切り',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.amber[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '¥1,800',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.amber[600],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'キャンセル',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (context) => const PremiumPlanSelectionScreen(),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber[600],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              '購入する',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),

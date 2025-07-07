@@ -5,8 +5,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 import '../models/hobby.dart';
+import '../models/category.dart';
 import '../providers/hobby_list_provider.dart';
+import '../providers/category_provider.dart';
 import '../services/background_image_service.dart';
+import '../services/category_service.dart';
 import '../services/memo_service.dart';
 import 'add_hobby_screen.dart';
 import 'edit_hobby_screen.dart';
@@ -20,34 +23,43 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  ImageProvider? _backgroundImage;
+class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStateMixin {
+  late PageController _pageController;
+  TabController? _tabController;
+  int _currentPageIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadBackgroundImage();
+    _pageController = PageController();
   }
 
-  Future<void> _loadBackgroundImage() async {
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _tabController?.dispose();
+    super.dispose();
+  }
+
+  /// カテゴリー別の背景画像を取得
+  Future<ImageProvider?> _getCategoryBackgroundImage(Category category) async {
     try {
+      if (category.backgroundImagePath != null) {
+        final file = await CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!);
+        if (file != null) {
+          return FileImage(file);
+        }
+      }
+      
+      // カテゴリー専用背景がない場合は、グローバル背景を使用
       final config = await BackgroundImageService.getCurrentConfig();
       if (config.type == BackgroundType.custom) {
-        final imageProvider = await config.getImageProvider();
-        setState(() {
-          _backgroundImage = imageProvider;
-        });
-      } else {
-        // デフォルトは背景画像なし（白背景）
-        setState(() {
-          _backgroundImage = null;
-        });
+        return await config.getImageProvider();
       }
+      
+      return null; // 白背景
     } catch (e) {
-      // エラーの場合は白背景
-      setState(() {
-        _backgroundImage = null;
-      });
+      return null; // エラーの場合は白背景
     }
   }
 
@@ -375,106 +387,304 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hobbies = ref.watch(hobbyListProvider);
+    final categories = ref.watch(categoryListProvider);
+    
+    if (categories.isEmpty) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // TabControllerを動的に初期化
+    if (_tabController == null || _tabController!.length != categories.length) {
+      _tabController?.dispose();
+      _tabController = TabController(length: categories.length, vsync: this);
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 背景（カスタム画像または白背景）
-          Positioned.fill(
-            child: _backgroundImage != null
-                ? Image(
-                    image: _backgroundImage!,
-                    fit: BoxFit.cover,
-                  )
-                : Container(
-                    color: Colors.white,
-                  ),
+          // カテゴリー別コンテンツ（全画面）
+          PageView.builder(
+            controller: _pageController,
+            itemCount: categories.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPageIndex = index;
+              });
+              _tabController!.animateTo(index);
+            },
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              return _buildCategoryPage(category);
+            },
           ),
-          // アイコン一覧
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-              child: FutureBuilder<Directory>(
-                future: getApplicationDocumentsDirectory(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final dirPath = snapshot.data!.path;
-
-                  if (hobbies.isEmpty) {
-                    return _buildEmptyState();
-                  }
-                  
-                  return ListView.builder(
-                    itemCount: hobbies.length,
-                    padding: const EdgeInsets.only(bottom: 100), // FABのための余白
-                    itemBuilder: (context, index) {
-                      final hobby = hobbies[index];
-                      final imagePath = p.join(dirPath, 'images', hobby.imageFileName);
-                      final file = File(imagePath);
-                      final exists = file.existsSync();
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _buildHobbyCard(
-                          hobby: hobby,
-                          imageFile: exists ? file : null,
-                          dirPath: dirPath,
-                        ),
-                      );
-                    },
-                  );
-                },
+          
+          // カテゴリ名表示（左上）
+          Positioned(
+            top: 0,
+            left: 0,
+            child: SafeArea(
+              child: Container(
+                margin: const EdgeInsets.only(left: 20, top: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.folder_outlined,
+                      color: Colors.grey[600],
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      categories[_currentPageIndex].name,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          // フローティングアクションボタン
+          
+          // Floating ToolBar（下部）
           Positioned(
-            bottom: 20,
-            right: 20,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FloatingActionButton(
-                  heroTag: "settings",
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SettingsScreen(),
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // カテゴリ切り替え（複数の場合のみ）
+                    if (categories.length > 1) ...[
+                      Expanded(
+                        child: Container(
+                          height: 40,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: categories.length,
+                            itemBuilder: (context, index) {
+                              final category = categories[index];
+                              final isSelected = index == _currentPageIndex;
+                              return GestureDetector(
+                                onTap: () {
+                                  _pageController.animateToPage(
+                                    index,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected 
+                                        ? const Color(0xFF009977)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      category.name,
+                                      style: TextStyle(
+                                        color: isSelected 
+                                            ? Colors.white
+                                            : const Color(0xFF009977),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
-                    );
+                      const SizedBox(width: 12),
+                    ] else ...[
+                      // カテゴリが1つの場合は中央寄せのスペーサー
+                      const Spacer(),
+                    ],
                     
-                    if (result == true) {
-                      _loadBackgroundImage();
-                    }
-                  },
-                  backgroundColor: Colors.white.withOpacity(0.9),
-                  child: const Icon(Icons.settings, color: Color(0xFF009977)),
-                ),
-                const SizedBox(height: 16),
-                FloatingActionButton(
-                  heroTag: "add",
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AddHobbyScreen(),
+                    // 設定ボタン
+                    Container(
+                      width: 44,
+                      height: 44,
+                      child: IconButton(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SettingsScreen(),
+                            ),
+                          );
+                          
+                          if (result == true) {
+                            ref.read(categoryListProvider.notifier).reload();
+                          }
+                        },
+                        icon: Icon(
+                          Icons.settings,
+                          color: Colors.grey[600],
+                          size: 24,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.grey[100],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                        ),
                       ),
-                    );
-                  },
-                  backgroundColor: const Color(0xFF009977),
-                  child: const Icon(Icons.add, color: Colors.white),
+                    ),
+                    
+                    const SizedBox(width: 8),
+                    
+                    // 追加FAB
+                    Container(
+                      width: 56,
+                      height: 44,
+                      child: FloatingActionButton(
+                        heroTag: "add",
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AddHobbyScreen(),
+                            ),
+                          );
+                        },
+                        backgroundColor: const Color(0xFF009977),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: const Icon(Icons.add, size: 24),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
       ),
+      
+    );
+  }
+
+  /// カテゴリーページを構築
+  Widget _buildCategoryPage(Category category) {
+    final hobbiesInCategory = ref.watch(hobbiesByCategoryProvider(category.id));
+    
+    return FutureBuilder<ImageProvider?>(
+      future: _getCategoryBackgroundImage(category),
+      builder: (context, backgroundSnapshot) {
+        return Stack(
+          children: [
+            // 背景画像
+            Positioned.fill(
+              child: backgroundSnapshot.data != null
+                  ? Image(
+                      image: backgroundSnapshot.data!,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      color: Colors.white,
+                    ),
+            ),
+            
+            // コンテンツ（グラデーションマスク付き）
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 60, 20, 20), // 上部余白を縮めた
+                child: FutureBuilder<Directory>(
+                  future: getApplicationDocumentsDirectory(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final dirPath = snapshot.data!.path;
+
+                    if (hobbiesInCategory.isEmpty) {
+                      return _buildEmptyState(category);
+                    }
+                    
+                    return ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        return LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black,
+                            Colors.black,
+                            Colors.transparent,
+                          ],
+                          stops: [0.0, 0.05, 0.85, 1.0],
+                        ).createShader(bounds);
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: ListView.builder(
+                        itemCount: hobbiesInCategory.length,
+                        padding: const EdgeInsets.only(top: 40, bottom: 120), // カテゴリ名とFloating ToolBarのための余白
+                        itemBuilder: (context, index) {
+                          final hobby = hobbiesInCategory[index];
+                          final imagePath = p.join(dirPath, 'images', hobby.imageFileName);
+                          final file = File(imagePath);
+                          final exists = file.existsSync();
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _buildHobbyCard(
+                              hobby: hobby,
+                              imageFile: exists ? file : null,
+                              dirPath: dirPath,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -639,7 +849,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState([Category? category]) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -664,9 +874,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SizedBox(height: 32),
             
             // メインメッセージ
-            const Text(
-              'あなたの趣味を\n記録してみませんか？',
-              style: TextStyle(
+            Text(
+              category?.id == 'default_all' 
+                  ? 'あなたの趣味を\n記録してみませんか？'
+                  : '「${category?.name}」に\n趣味を追加しましょう',
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -679,7 +891,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             
             // サブメッセージ
             Text(
-              '趣味を追加して、活動記録を\n写真やメモで残しましょう',
+              category?.id == 'default_all'
+                  ? '趣味を追加して、活動記録を\n写真やメモで残しましょう'
+                  : 'このカテゴリーにはまだ\n趣味が登録されていません',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -701,9 +915,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
               },
               icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text(
-                '最初の趣味を追加',
-                style: TextStyle(
+              label: Text(
+                category?.id == 'default_all' 
+                    ? '最初の趣味を追加'
+                    : '趣味を追加',
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,

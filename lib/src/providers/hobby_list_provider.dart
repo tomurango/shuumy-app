@@ -16,19 +16,8 @@ class HobbyListNotifier extends StateNotifier<List<Hobby>> {
 
   Future<void> load() async {
     final hobbies = await HobbyJsonService.loadHobbies();
-    final dir = await getApplicationDocumentsDirectory();
-
-    final rebuilt = hobbies.map((hobby) {
-      final fullPath = hobby.getImagePath(dir.path);
-      return Hobby(
-        id: hobby.id,
-        title: hobby.title,
-        memo: hobby.memo,
-        imageFileName: hobby.imageFileName, // imagePath はUIで構築
-      );
-    }).toList();
-
-    state = rebuilt;
+    // fromJsonで既に互換性処理が完了しているため、そのまま設定
+    state = hobbies;
   }
 
 

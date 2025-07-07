@@ -41,12 +41,13 @@ This is a Flutter app called "シューマイ" (shuumy) - a hobby tracking appli
 
 ### Key Dependencies
 - `flutter_riverpod` - State management
-- `image_picker` - Image selection functionality
+- `image_picker` - Image selection functionality  
 - `path_provider` - File system access
 - `uuid` - Unique identifier generation
 - `path` - Path manipulation utilities
 - `url_launcher` - Email and external URL handling
 - `package_info_plus` - App version information
+- `in_app_purchase` - App内課金・サブスクリプション管理
 
 ### Data Storage
 - **Hobbies**: `hobbies.json` in device's application documents directory
@@ -113,3 +114,74 @@ This is a Flutter app called "シューマイ" (shuumy) - a hobby tracking appli
 - **Edit/Delete**: Full CRUD operations for hobbies
 - **Image management**: Automatic cleanup of unused image files
 - **Error handling**: Comprehensive error handling with Japanese messages
+
+## 現在の開発状況 (2025-07-04)
+
+### 🎯 完了した主要機能
+
+#### カテゴリー機能 (完全実装済み)
+- **データモデル**: Category モデルと hobby.categoryId による関連付け
+- **UI改造**: HomeScreenをPageView + TabBar によるカテゴリー別表示に変更
+- **カテゴリー管理**: 作成・編集・削除・並び替え機能
+- **背景画像**: カテゴリー別の背景画像設定機能
+- **データ移行**: 既存ユーザーとの互換性確保
+
+#### プレミアム機能 (完全実装済み)
+- **3段階料金体系**: 月額・年額・買い切りプラン
+- **機能制限**: 無料版ではカテゴリー機能を制限
+- **購入・復元**: App内課金による購入とサブスクリプション管理
+- **UI**: プレミアムプラン選択画面とサブスクリプション情報表示
+
+#### App Store Connect 設定
+- **商品登録完了**: 3つの商品IDで設定済み
+  - `shuumy_premium_monthly`
+  - `shuumy_premium_yearly` 
+  - `shuumy_premium_lifetime`
+
+### ⚠️ 現在の課題・検討事項
+
+#### 価格設定の見直しが必要
+**現在の設定 (論理的に問題あり):**
+- 月額: ¥300
+- 年額: ¥2,500
+- 買い切り: ¥1,800 ← 年額より安い！
+
+**見直し案:**
+- 案1: 月額¥300, 年額¥2,500, 買い切り¥3,500
+- 案2: 月額¥300, 年額¥2,200, 買い切り¥2,800
+
+### 🔧 技術実装詳細
+
+#### PremiumService の主要機能
+- **サブスクリプション管理**: 期限追跡、自動期限切れ処理
+- **購入復元**: 手動復元機能とエラーハンドリング
+- **商品情報取得**: 複数商品の価格・詳細情報取得
+- **デバッグ機能**: テスト用のプレミアム状態設定
+
+#### CategoryService の主要機能  
+- **CRUD操作**: カテゴリーの作成・読み取り・更新・削除
+- **並び替え**: ドラッグ&ドロップによる順序変更
+- **背景画像**: カテゴリー別背景画像の管理
+- **安全削除**: 関連する趣味の自動移行
+
+### 📱 次回作業時の確認事項
+
+1. **価格設定の最終決定**
+   - App Store Connect での価格変更
+   - アプリ側UI の価格表示更新
+
+2. **動作確認 (Sandbox環境)**
+   - 実機でのApp内課金テスト
+   - プレミアム機能の動作確認
+   - サブスクリプション管理テスト
+
+3. **審査提出準備**
+   - 最終的な動作確認
+   - App Store Connect での審査提出
+
+### 🎨 アプリの現在の構成
+
+**メイン画面**: PageView + TabBar による カテゴリー別趣味表示
+**プレミアム機能**: カテゴリー作成・管理・背景設定
+**料金体系**: 3段階プラン (価格見直し予定)
+**審査状況**: App Store Connect 設定完了、実機テスト待ち
