@@ -427,38 +427,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             top: 0,
             left: 0,
             child: SafeArea(
-              child: Container(
-                margin: const EdgeInsets.only(left: 20, top: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.folder_outlined,
-                      color: Colors.grey[600],
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      categories[_currentPageIndex].name,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+              child: GestureDetector(
+                onTap: () => _showCategoryDropdown(context),
+                child: Container(
+                  margin: const EdgeInsets.only(left: 20, top: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.folder_outlined,
+                        color: Colors.grey[600],
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        categories[_currentPageIndex].name,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -471,11 +474,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             right: 0,
             child: SafeArea(
               child: Container(
-                margin: const EdgeInsets.all(16),
+                margin: const EdgeInsets.all(20),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(50),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.15),
@@ -485,114 +488,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   ],
                 ),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // カテゴリ切り替え（複数の場合のみ）
-                    if (categories.length > 1) ...[
-                      Expanded(
-                        child: Container(
-                          height: 40,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: categories.length,
-                            itemBuilder: (context, index) {
-                              final category = categories[index];
-                              final isSelected = index == _currentPageIndex;
-                              return GestureDetector(
-                                onTap: () {
-                                  _pageController.animateToPage(
-                                    index,
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                  );
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.only(right: 8),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isSelected 
-                                        ? const Color(0xFF009977)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      category.name,
-                                      style: TextStyle(
-                                        color: isSelected 
-                                            ? Colors.white
-                                            : const Color(0xFF009977),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                    ] else ...[
-                      // カテゴリが1つの場合は中央寄せのスペーサー
-                      const Spacer(),
-                    ],
-                    
-                    // 設定ボタン
-                    Container(
-                      width: 44,
-                      height: 44,
-                      child: IconButton(
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SettingsScreen(),
-                            ),
-                          );
-                          
-                          if (result == true) {
-                            ref.read(categoryListProvider.notifier).reload();
-                          }
-                        },
-                        icon: Icon(
-                          Icons.settings,
-                          color: Colors.grey[600],
-                          size: 24,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey[100],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                        ),
-                      ),
+                    // 左矢印（前のカテゴリ）
+                    _buildToolbarButton(
+                      icon: Icons.arrow_back_ios,
+                      onPressed: _currentPageIndex > 0 
+                          ? () => _navigateToCategory(_currentPageIndex - 1)
+                          : null,
                     ),
                     
-                    const SizedBox(width: 8),
+                    // 右矢印（次のカテゴリ）
+                    _buildToolbarButton(
+                      icon: Icons.arrow_forward_ios,
+                      onPressed: _currentPageIndex < categories.length - 1
+                          ? () => _navigateToCategory(_currentPageIndex + 1)
+                          : null,
+                    ),
                     
-                    // 追加FAB
-                    Container(
-                      width: 56,
-                      height: 44,
-                      child: FloatingActionButton(
-                        heroTag: "add",
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AddHobbyScreen(),
-                            ),
-                          );
-                        },
-                        backgroundColor: const Color(0xFF009977),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(22),
-                        ),
-                        child: const Icon(Icons.add, size: 24),
-                      ),
+                    // 趣味追加
+                    _buildToolbarButton(
+                      icon: Icons.add,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AddHobbyScreen(),
+                          ),
+                        );
+                      },
+                      isAccent: true,
+                      isPill: true,
+                    ),
+                    
+                    // 活動記録確認（未実装）
+                    _buildToolbarButton(
+                      icon: Icons.bar_chart,
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('活動記録機能は準備中です'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                    
+                    // 設定
+                    _buildToolbarButton(
+                      icon: Icons.settings,
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                        
+                        if (result == true) {
+                          ref.read(categoryListProvider.notifier).reload();
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -602,6 +558,139 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         ],
       ),
       
+    );
+  }
+
+  /// カテゴリー選択ドロップダウンを表示
+  void _showCategoryDropdown(BuildContext context) {
+    final categories = ref.read(categoryListProvider);
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ハンドルバー
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                height: 4,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // タイトル
+              Container(
+                padding: const EdgeInsets.all(20),
+                child: const Text(
+                  'カテゴリを選択',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              // カテゴリリスト
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    final isSelected = index == _currentPageIndex;
+                    
+                    return ListTile(
+                      leading: Icon(
+                        Icons.folder_outlined,
+                        color: isSelected ? const Color(0xFF009977) : Colors.grey[600],
+                      ),
+                      title: Text(
+                        category.name,
+                        style: TextStyle(
+                          color: isSelected ? const Color(0xFF009977) : Colors.black87,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(
+                              Icons.check,
+                              color: Color(0xFF009977),
+                            )
+                          : null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pageController.animateToPage(
+                          index,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              // 下部の余白
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// カテゴリーに移動
+  void _navigateToCategory(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  /// ツールバーボタンを構築
+  Widget _buildToolbarButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    bool isAccent = false,
+    bool isPill = false,
+  }) {
+    return Container(
+      width: isPill ? 56 : 44,
+      height: 44,
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(
+          icon,
+          color: isAccent 
+              ? Colors.white
+              : onPressed != null 
+                  ? Colors.grey[700]
+                  : Colors.grey[400],
+          size: 20,
+        ),
+        style: IconButton.styleFrom(
+          backgroundColor: isAccent 
+              ? const Color(0xFF009977)
+              : onPressed != null 
+                  ? Colors.grey[100]
+                  : Colors.grey[50],
+          shape: isPill 
+              ? RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                )
+              : const CircleBorder(),
+          elevation: 0,
+        ),
+      ),
     );
   }
 
