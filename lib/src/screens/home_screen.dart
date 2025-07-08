@@ -27,6 +27,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   late PageController _pageController;
   TabController? _tabController;
   int _currentPageIndex = 0;
+  bool _isBackgroundViewMode = false;
 
   @override
   void initState() {
@@ -437,43 +438,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           ),
           
           // カテゴリ名表示（左上）
-          Positioned(
-            top: 0,
-            left: 0,
-            child: SafeArea(
-              child: GestureDetector(
-                onTap: () => _showCategoryDropdown(context),
-                child: Container(
-                  margin: const EdgeInsets.only(left: 20, top: 16),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
+          if (!_isBackgroundViewMode)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 20, top: 16, right: 20),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.folder_outlined,
-                        color: Colors.grey[600],
-                        size: 18,
+                      // カテゴリ名表示
+                      GestureDetector(
+                        onTap: () => _showCategoryDropdown(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.95),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 12,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.folder_outlined,
+                                color: Colors.grey[600],
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                categories.isNotEmpty && _currentPageIndex < categories.length
+                                    ? categories[_currentPageIndex].name
+                                    : 'カテゴリなし',
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        categories.isNotEmpty && _currentPageIndex < categories.length
-                            ? categories[_currentPageIndex].name
-                            : 'カテゴリなし',
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                      
+                      // 隠し操作エリア（ダブルタップで背景表示モード）
+                      Expanded(
+                        child: GestureDetector(
+                          onDoubleTap: () async {
+                            // 背景が設定されている場合のみ動作
+                            final backgroundImage = await _getCurrentBackgroundImage();
+                            if (backgroundImage != null) {
+                              _toggleBackgroundViewMode();
+                            }
+                          },
+                          child: Container(
+                            height: 44, // カテゴリ名コンテナと同じ高さ
+                            color: Colors.transparent,
+                          ),
                         ),
                       ),
                     ],
@@ -481,10 +509,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 ),
               ),
             ),
-          ),
           
           // Floating ToolBar（下部）
-          Positioned(
+          if (!_isBackgroundViewMode)
+            Positioned(
             bottom: 0,
             left: 0,
             right: 0,
@@ -571,10 +599,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               ),
             ),
           ),
+          
+          // 背景表示モード時の終了エリア
+          if (_isBackgroundViewMode)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _toggleBackgroundViewMode,
+                child: Container(
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
         ],
       ),
       
     );
+  }
+
+  /// 現在の背景画像を取得
+  Future<ImageProvider?> _getCurrentBackgroundImage() async {
+    final categories = ref.read(categoryListProvider);
+    if (categories.isEmpty || _currentPageIndex >= categories.length) {
+      return null;
+    }
+    
+    final category = categories[_currentPageIndex];
+    return await _getCategoryBackgroundImage(category);
+  }
+
+  /// 背景表示モードの切り替え
+  void _toggleBackgroundViewMode() {
+    setState(() {
+      _isBackgroundViewMode = !_isBackgroundViewMode;
+    });
   }
 
   /// カテゴリー選択ドロップダウンを表示
@@ -719,9 +776,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       builder: (context, backgroundSnapshot) {
         return Stack(
           children: [
-            // 背景画像（趣味がある場合のみ表示）
+            // 背景画像
             Positioned.fill(
-              child: hobbiesInCategory.isNotEmpty && backgroundSnapshot.data != null
+              child: (_isBackgroundViewMode && backgroundSnapshot.data != null) ||
+                     (hobbiesInCategory.isNotEmpty && backgroundSnapshot.data != null)
                   ? Image(
                       image: backgroundSnapshot.data!,
                       fit: BoxFit.cover,
@@ -731,7 +789,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     ),
             ),
             
-            // コンテンツ（グラデーションマスク付き）
+            // コンテンツ（背景表示モード時は非表示）
+            if (!_isBackgroundViewMode)
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 60, 20, 20), // 上部余白を縮めた
