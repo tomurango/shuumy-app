@@ -31,6 +31,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   bool _isBackgroundViewMode = false;
   bool _isReorderMode = false;
   late AnimationController _shakeController;
+  Map<String, ScrollController> _scrollControllers = {};
+  Map<String, bool> _showTopShadow = {};
 
   @override
   void initState() {
@@ -42,11 +44,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     );
   }
 
+  ScrollController _getScrollController(String categoryId) {
+    if (!_scrollControllers.containsKey(categoryId)) {
+      final controller = ScrollController();
+      controller.addListener(() => _onScroll(categoryId));
+      _scrollControllers[categoryId] = controller;
+      _showTopShadow[categoryId] = false;
+    }
+    return _scrollControllers[categoryId]!;
+  }
+
+  void _onScroll(String categoryId) {
+    final controller = _scrollControllers[categoryId];
+    if (controller == null) return;
+    
+    final bool shouldShowShadow = controller.hasClients && controller.offset > 10;
+    if (shouldShowShadow != (_showTopShadow[categoryId] ?? false)) {
+      setState(() {
+        _showTopShadow[categoryId] = shouldShowShadow;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
     _tabController?.dispose();
     _shakeController.dispose();
+    for (final controller in _scrollControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -482,22 +509,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   padding: const EdgeInsets.only(left: 20, top: 16, right: 20),
                   child: Row(
                     children: [
-                      // カテゴリ名表示
+                      // カテゴリ名表示 - Material Design 3準拠
                       GestureDetector(
                         onTap: () => _showCategoryDropdown(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 12,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
+                        child: Material(
+                          elevation: 2.0, // MD3準拠のelevation
+                          color: Theme.of(context).colorScheme.surfaceContainer,
+                          borderRadius: BorderRadius.circular(20),
+                          clipBehavior: Clip.antiAlias,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -518,6 +539,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                 ),
                               ),
                             ],
+                          ),
                           ),
                         ),
                       ),
@@ -575,95 +597,92 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               ),
             ),
           
-          // Floating ToolBar（下部）
+          // Floating ToolBar（下部）- Material Design 3準拠
           if (!_isBackgroundViewMode)
             Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Container(
-                margin: const EdgeInsets.all(20),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(50),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // 左矢印（前のカテゴリ）
-                    _buildToolbarButton(
-                      icon: Icons.arrow_back_ios,
-                      onPressed: _currentPageIndex > 0 
-                          ? () => _navigateToCategory(_currentPageIndex - 1)
-                          : null,
-                    ),
-                    
-                    // 右矢印（次のカテゴリ）
-                    _buildToolbarButton(
-                      icon: Icons.arrow_forward_ios,
-                      onPressed: _currentPageIndex < categories.length - 1
-                          ? () => _navigateToCategory(_currentPageIndex + 1)
-                          : null,
-                    ),
-                    
-                    // 趣味追加
-                    _buildToolbarButton(
-                      icon: Icons.add,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AddHobbyScreen(),
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  child: Material(
+                    elevation: 3.0, // MD3準拠のelevation
+                    color: Theme.of(context).colorScheme.surfaceContainer, // MD3 Surface container
+                    borderRadius: BorderRadius.circular(50),
+                    clipBehavior: Clip.antiAlias,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // 左矢印（前のカテゴリ）
+                          _buildToolbarButton(
+                            icon: Icons.arrow_back_ios_new,
+                            onPressed: _currentPageIndex > 0 
+                                ? () => _navigateToCategory(_currentPageIndex - 1)
+                                : null,
                           ),
-                        );
-                      },
-                      isAccent: true,
-                      isPill: true,
-                    ),
-                    
-                    // 活動記録確認（未実装）
-                    _buildToolbarButton(
-                      icon: Icons.bar_chart,
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('活動記録機能は準備中です'),
-                            duration: Duration(seconds: 2),
+                          
+                          // 右矢印（次のカテゴリ）
+                          _buildToolbarButton(
+                            icon: Icons.arrow_forward_ios,
+                            onPressed: _currentPageIndex < categories.length - 1
+                                ? () => _navigateToCategory(_currentPageIndex + 1)
+                                : null,
                           ),
-                        );
-                      },
-                    ),
-                    
-                    // 設定
-                    _buildToolbarButton(
-                      icon: Icons.settings,
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
+                          
+                          // 趣味追加
+                          _buildToolbarButton(
+                            icon: Icons.add,
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const AddHobbyScreen(),
+                                ),
+                              );
+                            },
+                            isAccent: true,
+                            isPill: true,
                           ),
-                        );
-                        
-                        if (result == true) {
-                          ref.read(categoryListProvider.notifier).reload();
-                        }
-                      },
+                          
+                          // 活動記録確認（未実装）
+                          _buildToolbarButton(
+                            icon: Icons.bar_chart,
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('活動記録機能は準備中です'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                          ),
+                          
+                          // 設定
+                          _buildToolbarButton(
+                            icon: Icons.settings,
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
+                              
+                              if (result == true) {
+                                ref.read(categoryListProvider.notifier).reload();
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
           
           // 背景表示モード時の終了エリア
           if (_isBackgroundViewMode)
@@ -871,10 +890,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             
             // コンテンツ（背景表示モード時は非表示）
             if (!_isBackgroundViewMode)
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 60, 20, 20), // 上部余白を縮めた
-                child: FutureBuilder<Directory>(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 130, 20, 0), // 上部スクロール範囲をさらに下にずらす
+              child: FutureBuilder<Directory>(
                   future: getApplicationDocumentsDirectory(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
@@ -887,59 +905,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       return _buildEmptyState(category);
                     }
                     
-                    return ShaderMask(
-                      shaderCallback: (Rect bounds) {
-                        return LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black,
-                            Colors.black,
-                            Colors.transparent,
-                          ],
-                          stops: [0.0, 0.05, 0.85, 1.0],
-                        ).createShader(bounds);
+                    return ReorderableListView.builder(
+                      scrollController: _getScrollController(category.id),
+                      itemCount: hobbiesInCategory.length,
+                      padding: const EdgeInsets.only(top: 30, bottom: 120), // ツールバー分の余白を確保
+                      onReorder: (oldIndex, newIndex) => _onReorderHobbies(category, oldIndex, newIndex, hobbiesInCategory),
+                      buildDefaultDragHandles: false, // デフォルトのドラッグハンドルを無効化
+                      scrollDirection: Axis.vertical,
+                      proxyDecorator: (child, index, animation) {
+                        return MediaQuery.removePadding(
+                          context: context,
+                          removeTop: true,
+                          removeBottom: true,
+                          child: Material(
+                            elevation: 4.0,
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            child: child,
+                          ),
+                        );
                       },
-                      blendMode: BlendMode.dstIn,
-                      child: ReorderableListView.builder(
-                        itemCount: hobbiesInCategory.length,
-                        padding: const EdgeInsets.only(top: 40, bottom: 120), // カテゴリ名とFloating ToolBarのための余白
-                        onReorder: (oldIndex, newIndex) => _onReorderHobbies(category, oldIndex, newIndex, hobbiesInCategory),
-                        buildDefaultDragHandles: false, // デフォルトのドラッグハンドルを無効化
-                        scrollDirection: Axis.vertical,
-                        proxyDecorator: (child, index, animation) {
-                          return MediaQuery.removePadding(
-                            context: context,
-                            removeTop: true,
-                            removeBottom: true,
-                            child: Material(
-                              elevation: 4.0,
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              child: child,
-                            ),
-                          );
-                        },
-                        itemBuilder: (context, index) {
-                          final hobby = hobbiesInCategory[index];
-                          final imagePath = p.join(dirPath, 'images', hobby.imageFileName);
-                          final file = File(imagePath);
-                          final exists = file.existsSync();
+                      itemBuilder: (context, index) {
+                        final hobby = hobbiesInCategory[index];
+                        final imagePath = p.join(dirPath, 'images', hobby.imageFileName);
+                        final file = File(imagePath);
+                        final exists = file.existsSync();
 
-                          return Padding(
-                            key: ValueKey(hobby.id),
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: GestureDetector(
-                              onLongPress: () {
-                                if (!_isReorderMode) {
-                                  _toggleReorderMode();
-                                }
-                              },
-                              child: _isReorderMode
-                                ? ReorderableDragStartListener(
-                                    index: index,
-                                    child: AnimatedBuilder(
+                        return Padding(
+                          key: ValueKey(hobby.id),
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: GestureDetector(
+                            onLongPress: () {
+                              if (!_isReorderMode) {
+                                _toggleReorderMode();
+                              }
+                            },
+                            child: _isReorderMode
+                              ? ReorderableDragStartListener(
+                                  index: index,
+                                  child: AnimatedBuilder(
                                       animation: _shakeController,
                                       builder: (context, child) {
                                         // より自然な揺れのためのオフセット計算
@@ -972,9 +976,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                             ),
                           );
                         },
-                      ),
-                    );
+                      );
                   },
+                ),
+              ),
+            
+            // 上部スクロール境界の影（スクロール時のみ）
+            if (!_isBackgroundViewMode && 
+                (_showTopShadow[category.id] ?? false))
+            Positioned(
+              top: 130,
+              left: 0,
+              right: 0,
+              height: 30,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.15),
+                      Colors.black.withOpacity(0.08),
+                      Colors.black.withOpacity(0.03),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.4, 0.8, 1.0],
+                  ),
                 ),
               ),
             ),
@@ -1170,26 +1197,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   Widget _buildEmptyState([Category? category]) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.fromLTRB(40, 40, 40, 140), // 下部にツールバー分の余白を追加
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min, // コンテンツサイズに合わせる
           children: [
-            // メインアイコン
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: const Color(0xFF009977).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(60),
-              ),
-              child: const Icon(
-                Icons.favorite_border,
-                size: 60,
-                color: Color(0xFF009977),
-              ),
-            ),
-            
-            const SizedBox(height: 32),
+            const SizedBox(height: 20), // 上部余白を調整
             
             // メインメッセージ
             Text(
@@ -1197,7 +1210,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   ? 'あなたの趣味を\n記録してみませんか？'
                   : '「${category?.name}」に\n趣味を追加しましょう',
               style: const TextStyle(
-                fontSize: 24,
+                fontSize: 20, // サイズを小さく
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
                 height: 1.3,
@@ -1205,7 +1218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               textAlign: TextAlign.center,
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 12), // 間隔を短く
             
             // サブメッセージ
             Text(
@@ -1213,14 +1226,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   ? '趣味を追加して、活動記録を\n写真やメモで残しましょう'
                   : 'このカテゴリーにはまだ\n趣味が登録されていません',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 14, // サイズを小さく
                 color: Colors.grey[600],
-                height: 1.5,
+                height: 1.4, // 行間を狭く
               ),
               textAlign: TextAlign.center,
             ),
             
-            const SizedBox(height: 40),
+            const SizedBox(height: 30), // 間隔を短く
             
             // 行動誘導ボタン
             ElevatedButton.icon(

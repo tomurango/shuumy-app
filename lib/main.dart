@@ -24,6 +24,13 @@ class ShuumyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF009977), // アプリのブランドグリーン
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+      ),
       home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
