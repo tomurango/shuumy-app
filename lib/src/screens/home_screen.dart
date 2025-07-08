@@ -389,6 +389,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   Widget build(BuildContext context) {
     final categories = ref.watch(categoryListProvider);
     
+    // カテゴリ数が変わった時にインデックスを調整
+    if (categories.isNotEmpty && _currentPageIndex >= categories.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _currentPageIndex = categories.length - 1;
+        });
+        _pageController.animateToPage(
+          _currentPageIndex,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+    
     if (categories.isEmpty) {
       return const Scaffold(
         backgroundColor: Colors.white,
@@ -453,7 +467,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        categories[_currentPageIndex].name,
+                        categories.isNotEmpty && _currentPageIndex < categories.length
+                            ? categories[_currentPageIndex].name
+                            : 'カテゴリなし',
                         style: const TextStyle(
                           color: Colors.black87,
                           fontSize: 15,

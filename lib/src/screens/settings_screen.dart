@@ -738,11 +738,13 @@ class _SubscriptionDetailsDialog extends StatelessWidget {
                   size: 28,
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'サブスクリプション情報',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                const Expanded(
+                  child: Text(
+                    'サブスクリプション情報',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],

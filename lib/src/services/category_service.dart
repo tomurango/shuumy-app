@@ -96,19 +96,10 @@ class CategoryService {
 
   /// カテゴリーの順序を更新
   static Future<void> reorderCategories(List<Category> reorderedCategories) async {
-    // デフォルトカテゴリーは必ず最初に
-    final defaultCategory = reorderedCategories.firstWhere(
-      (c) => c.id == 'default_all',
-      orElse: () => Category.defaultCategory(),
-    );
-    
-    final otherCategories = reorderedCategories.where((c) => c.id != 'default_all').toList();
-    
-    final orderedCategories = <Category>[defaultCategory];
-    
     // 順序を再設定
-    for (int i = 0; i < otherCategories.length; i++) {
-      orderedCategories.add(otherCategories[i].copyWith(order: i + 1));
+    final orderedCategories = <Category>[];
+    for (int i = 0; i < reorderedCategories.length; i++) {
+      orderedCategories.add(reorderedCategories[i].copyWith(order: i));
     }
 
     await saveCategories(orderedCategories);

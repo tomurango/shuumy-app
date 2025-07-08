@@ -7,6 +7,7 @@ import '../models/category.dart';
 import '../providers/category_provider.dart';
 import '../providers/hobby_list_provider.dart';
 import '../services/category_service.dart';
+import 'background_settings_screen.dart';
 
 class CategoryManagementScreen extends ConsumerStatefulWidget {
   const CategoryManagementScreen({super.key});
@@ -87,12 +88,11 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!isDefault) 
-              Icon(
-                Icons.drag_handle,
-                color: Colors.grey[400],
-                size: 20,
-              ),
+            Icon(
+              Icons.drag_handle,
+              color: Colors.grey[400],
+              size: 20,
+            ),
             const SizedBox(width: 8),
             _buildCategoryIcon(category),
           ],
@@ -119,37 +119,39 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                   color: Colors.grey,
                 ),
               ),
-        trailing: isDefault 
-            ? null 
-            : PopupMenuButton<String>(
-                onSelected: (value) => _handleMenuAction(value, category),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: ListTile(
-                      leading: Icon(Icons.edit),
-                      title: Text('編集'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'background',
-                    child: ListTile(
-                      leading: Icon(Icons.wallpaper),
-                      title: Text('背景画像'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: ListTile(
-                      leading: Icon(Icons.delete, color: Colors.red),
-                      title: Text('削除', style: TextStyle(color: Colors.red)),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) => _handleMenuAction(value, category),
+          itemBuilder: (context) => [
+            if (!isDefault) ...[
+              const PopupMenuItem(
+                value: 'edit',
+                child: ListTile(
+                  leading: Icon(Icons.edit),
+                  title: Text('編集'),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
+            ],
+            const PopupMenuItem(
+              value: 'background',
+              child: ListTile(
+                leading: Icon(Icons.wallpaper),
+                title: Text('背景画像'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            if (!isDefault) ...[
+              const PopupMenuItem(
+                value: 'delete',
+                child: ListTile(
+                  leading: Icon(Icons.delete, color: Colors.red),
+                  title: Text('削除', style: TextStyle(color: Colors.red)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -210,13 +212,6 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
     }
 
     final categories = List<Category>.from(ref.read(categoryListProvider));
-    
-    // デフォルトカテゴリーは並び替え不可
-    if (categories[oldIndex].id == 'default_all' || 
-        categories[newIndex].id == 'default_all') {
-      return;
-    }
-
     final item = categories.removeAt(oldIndex);
     categories.insert(newIndex, item);
 
@@ -362,38 +357,18 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
 
   /// 背景画像選択
   void _showBackgroundImagePicker(Category category) async {
-    try {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
-
-      if (pickedFile == null) return;
-
-      final imageFile = File(pickedFile.path);
-      final fileName = await CategoryService.saveCategoryBackground(imageFile);
-      
-      final updatedCategory = category.copyWith(backgroundImagePath: fileName);
-      await ref.read(categoryListProvider.notifier).updateCategory(updatedCategory);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('「${category.name}」の背景画像を設定しました'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('エラーが発生しました: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BackgroundSettingsScreen(
+          initialCategoryId: category.id,
+        ),
+      ),
+    );
+    
+    // 背景設定画面から戻ってきた場合、カテゴリ一覧を更新
+    if (result == true) {
+      ref.read(categoryListProvider.notifier).reload();
     }
   }
 
