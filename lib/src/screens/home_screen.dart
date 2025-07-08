@@ -719,9 +719,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       builder: (context, backgroundSnapshot) {
         return Stack(
           children: [
-            // 背景画像
+            // 背景画像（趣味がある場合のみ表示）
             Positioned.fill(
-              child: backgroundSnapshot.data != null
+              child: hobbiesInCategory.isNotEmpty && backgroundSnapshot.data != null
                   ? Image(
                       image: backgroundSnapshot.data!,
                       fit: BoxFit.cover,
