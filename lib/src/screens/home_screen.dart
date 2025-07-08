@@ -842,6 +842,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         itemCount: hobbiesInCategory.length,
                         padding: const EdgeInsets.only(top: 40, bottom: 120), // カテゴリ名とFloating ToolBarのための余白
                         onReorder: (oldIndex, newIndex) => _onReorderHobbies(category, oldIndex, newIndex, hobbiesInCategory),
+                        buildDefaultDragHandles: false, // デフォルトのドラッグハンドルを無効化
                         proxyDecorator: (child, index, animation) {
                           return AnimatedBuilder(
                             animation: animation,
@@ -878,11 +879,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           return Padding(
                             key: ValueKey(hobby.id),
                             padding: const EdgeInsets.only(bottom: 16),
-                            child: _buildHobbyCard(
-                              hobby: hobby,
-                              imageFile: exists ? file : null,
-                              dirPath: dirPath,
-                              hobbiesInCategory: hobbiesInCategory,
+                            child: ReorderableDragStartListener(
+                              index: index,
+                              child: _buildHobbyCard(
+                                hobby: hobby,
+                                imageFile: exists ? file : null,
+                                dirPath: dirPath,
+                                hobbiesInCategory: hobbiesInCategory,
+                              ),
                             ),
                           );
                         },
@@ -1039,40 +1043,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               ),
             ),
             
-            // 右端：並べ替えハンドルとオプションボタン
+            // 右端：オプションボタン
             Container(
               padding: const EdgeInsets.only(right: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 並べ替えハンドル
-                  ReorderableDragStartListener(
-                    index: hobbiesInCategory.indexOf(hobby),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.drag_handle,
-                        color: Colors.grey[500],
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  // オプションボタン
-                  IconButton(
-                    onPressed: () => _showOptionsMenu(context, hobby, ref),
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: Colors.grey[600],
-                      size: 20,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
-                    padding: const EdgeInsets.all(6),
-                  ),
-                ],
+              child: IconButton(
+                onPressed: () => _showOptionsMenu(context, hobby, ref),
+                icon: Icon(
+                  Icons.more_vert,
+                  color: Colors.grey[600],
+                  size: 20,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
+                padding: const EdgeInsets.all(6),
               ),
             ),
             ],
