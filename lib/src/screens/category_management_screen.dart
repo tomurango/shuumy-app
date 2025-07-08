@@ -71,33 +71,19 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                     builder: (BuildContext context, Widget? child) {
                       final double animValue = Curves.easeInOut.transform(animation.value);
                       final double elevation = lerpDouble(2, 8, animValue)!;
-                      final double scale = lerpDouble(1.0, 1.03, animValue)!;
+                      final double scale = lerpDouble(1.0, 1.02, animValue)!;
                       return Transform.scale(
                         scale: scale,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15 + (0.15 * animValue)),
-                                blurRadius: elevation * 2,
-                                offset: Offset(0, elevation / 2),
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: Opacity(
-                            opacity: 1.0, // ドラッグ中のカードは完全に表示
-                            child: child,
-                          ),
+                        child: Material(
+                          elevation: elevation,
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          clipBehavior: Clip.antiAlias,
+                          child: child,
                         ),
                       );
                     },
-                    child: Opacity(
-                      opacity: 0.0, // 元のカードを透明にして二重表示を防ぐ
-                      child: child,
-                    ),
+                    child: child,
                   );
                 },
                 itemBuilder: (context, index) {
