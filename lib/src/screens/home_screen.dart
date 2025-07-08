@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -29,18 +30,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   TabController? _tabController;
   int _currentPageIndex = 0;
   bool _isBackgroundViewMode = false;
+  bool _isReorderMode = false;
+  late AnimationController _shakeController;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _shakeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     _tabController?.dispose();
+    _shakeController.dispose();
     super.dispose();
+  }
+
+  /// 並び替えモードの切り替え
+  void _toggleReorderMode() {
+    setState(() {
+      _isReorderMode = !_isReorderMode;
+    });
+    
+    if (_isReorderMode) {
+      // 震えアニメーションを開始
+      _shakeController.repeat();
+    } else {
+      // アニメーションを停止
+      _shakeController.stop();
+      _shakeController.reset();
+    }
+  }
+
+  /// 並び替えモードを終了
+  void _exitReorderMode() {
+    setState(() {
+      _isReorderMode = false;
+    });
+    _shakeController.stop();
+    _shakeController.reset();
   }
 
   /// カテゴリー別の背景画像を取得
@@ -426,6 +459,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           PageView.builder(
             controller: _pageController,
             itemCount: categories.length,
+            pageSnapping: true,
             onPageChanged: (index) {
               setState(() {
                 _currentPageIndex = index;
@@ -506,6 +540,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+            ),
+          
+          // 並び替えモード時の完了ボタン（右上）
+          if (_isReorderMode && !_isBackgroundViewMode)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 20, top: 16),
+                  child: GestureDetector(
+                    onTap: _exitReorderMode,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.95),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        '完了',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -843,6 +914,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         padding: const EdgeInsets.only(top: 40, bottom: 120), // カテゴリ名とFloating ToolBarのための余白
                         onReorder: (oldIndex, newIndex) => _onReorderHobbies(category, oldIndex, newIndex, hobbiesInCategory),
                         buildDefaultDragHandles: false, // デフォルトのドラッグハンドルを無効化
+                        scrollDirection: Axis.vertical,
                         proxyDecorator: (child, index, animation) {
                           return AnimatedBuilder(
                             animation: animation,
@@ -879,14 +951,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           return Padding(
                             key: ValueKey(hobby.id),
                             padding: const EdgeInsets.only(bottom: 16),
-                            child: ReorderableDragStartListener(
-                              index: index,
-                              child: _buildHobbyCard(
-                                hobby: hobby,
-                                imageFile: exists ? file : null,
-                                dirPath: dirPath,
-                                hobbiesInCategory: hobbiesInCategory,
-                              ),
+                            child: GestureDetector(
+                              onLongPress: () {
+                                if (!_isReorderMode) {
+                                  _toggleReorderMode();
+                                }
+                              },
+                              child: _isReorderMode
+                                ? ReorderableDragStartListener(
+                                    index: index,
+                                    child: AnimatedBuilder(
+                                      animation: _shakeController,
+                                      builder: (context, child) {
+                                        // より自然な揺れのためのオフセット計算
+                                        final shakeOffset = (index % 2 == 0 ? 1 : -1) * 
+                                            1.5 * math.sin(_shakeController.value * 2 * math.pi);
+                                        final rotationAngle = (index % 2 == 0 ? 1 : -1) * 
+                                            0.015 * math.sin(_shakeController.value * 2 * math.pi);
+                                        
+                                        return Transform.translate(
+                                          offset: Offset(shakeOffset, 0),
+                                          child: Transform.rotate(
+                                            angle: rotationAngle,
+                                            child: Transform.scale(
+                                              scale: 0.98, // 少し縮小
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(20),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: const Color(0xFF009977).withOpacity(0.3),
+                                                      blurRadius: 12,
+                                                      offset: const Offset(0, 6),
+                                                      spreadRadius: 2,
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: _buildHobbyCard(
+                                                  hobby: hobby,
+                                                  imageFile: exists ? file : null,
+                                                  dirPath: dirPath,
+                                                  hobbiesInCategory: hobbiesInCategory,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : _buildHobbyCard(
+                                    hobby: hobby,
+                                    imageFile: exists ? file : null,
+                                    dirPath: dirPath,
+                                    hobbiesInCategory: hobbiesInCategory,
+                                  ),
                             ),
                           );
                         },
@@ -932,40 +1051,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               ),
             ],
           ),
-        child: Row(
-          children: [
-            // 左側：アイコン画像エリア
-            Container(
-              width: 100,
-              height: 100,
-              margin: const EdgeInsets.all(10),
-              child: Hero(
-                tag: 'hobby_image_${hobby.id}',
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[100],
-                    image: imageFile != null
-                        ? DecorationImage(
-                            image: FileImage(imageFile),
-                            fit: BoxFit.cover,
+          child: Row(
+            children: [
+              // 左側：アイコン画像エリア
+              Container(
+                width: 100,
+                height: 100,
+                margin: const EdgeInsets.all(10),
+                child: _isReorderMode 
+                ? Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey[100],
+                      image: imageFile != null
+                          ? DecorationImage(
+                              image: FileImage(imageFile),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: imageFile == null
+                        ? Icon(
+                            Icons.broken_image,
+                            color: Colors.grey[400],
+                            size: 40,
                           )
                         : null,
+                  )
+                : Hero(
+                    tag: 'hobby_image_${hobby.id}',
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey[100],
+                        image: imageFile != null
+                            ? DecorationImage(
+                                image: FileImage(imageFile),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: imageFile == null
+                          ? Icon(
+                              Icons.broken_image,
+                              color: Colors.grey[400],
+                              size: 40,
+                            )
+                          : null,
+                    ),
                   ),
-                  child: imageFile == null
-                      ? Icon(
-                          Icons.broken_image,
-                          color: Colors.grey[400],
-                          size: 40,
-                        )
-                      : null,
-                ),
               ),
-            ),
-            
-            // 右側：情報エリア
-            Expanded(
-              child: Container(
+              
+              // 右側：情報エリア
+              Expanded(
+                child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1041,12 +1180,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   ],
                 ),
               ),
-            ),
-            
-            // 右端：オプションボタン
-            Container(
-              padding: const EdgeInsets.only(right: 8),
-              child: IconButton(
+              ),
+              
+              // 右端：オプションボタン
+              Container(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
                 onPressed: () => _showOptionsMenu(context, hobby, ref),
                 icon: Icon(
                   Icons.more_vert,
@@ -1058,8 +1197,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   minHeight: 32,
                 ),
                 padding: const EdgeInsets.all(6),
+                ),
               ),
-            ),
             ],
           ),
         ),

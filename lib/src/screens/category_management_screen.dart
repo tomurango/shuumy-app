@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -65,9 +64,44 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                 padding: const EdgeInsets.all(16),
                 itemCount: categories.length,
                 onReorder: _onReorder,
+                buildDefaultDragHandles: false,
+                proxyDecorator: (child, index, animation) {
+                  return AnimatedBuilder(
+                    animation: animation,
+                    builder: (BuildContext context, Widget? child) {
+                      final double animValue = Curves.easeInOut.transform(animation.value);
+                      final double elevation = 2.0 + (4.0 * animValue);
+                      final double scale = 1.0 + (0.02 * animValue);
+                      return Transform.scale(
+                        scale: scale,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15 + (0.1 * animValue)),
+                                blurRadius: elevation * 2,
+                                offset: Offset(0, elevation / 2),
+                              ),
+                            ],
+                          ),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: child,
+                  );
+                },
                 itemBuilder: (context, index) {
                   final category = categories[index];
-                  return _buildCategoryItem(category, index);
+                  return Padding(
+                    key: ValueKey(category.id),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: ReorderableDragStartListener(
+                      index: index,
+                      child: _buildCategoryItem(category, index),
+                    ),
+                  );
                 },
               ),
             ),
@@ -76,13 +110,75 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
     );
   }
 
+
+  /// カテゴリーアイコンを構築
+  Widget _buildCategoryIcon(Category category) {
+    if (category.backgroundImagePath != null) {
+      return FutureBuilder<File?>(
+        future: CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && snapshot.data != null) {
+            return Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                image: DecorationImage(
+                  image: FileImage(snapshot.data!),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            );
+          }
+          return _buildDefaultIcon(category);
+        },
+      );
+    }
+    return _buildDefaultIcon(category);
+  }
+
+  /// デフォルトアイコンを構築
+  Widget _buildDefaultIcon(Category category) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: category.id == 'default_all' 
+            ? const Color(0xFF009977).withOpacity(0.1)
+            : Colors.grey[100],
+      ),
+      child: Icon(
+        category.id == 'default_all' 
+            ? Icons.all_inclusive 
+            : Icons.folder_outlined,
+        color: category.id == 'default_all' 
+            ? const Color(0xFF009977)
+            : Colors.grey[600],
+        size: 20,
+      ),
+    );
+  }
+
+  /// 並び替え処理
+  void _onReorder(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    final categories = List<Category>.from(ref.read(categoryListProvider));
+    final item = categories.removeAt(oldIndex);
+    categories.insert(newIndex, item);
+
+    // 並び替え実行
+    ref.read(categoryListProvider.notifier).reorderCategories(categories);
+  }
+
   /// カテゴリー項目を構築
   Widget _buildCategoryItem(Category category, int index) {
     final isDefault = category.id == 'default_all';
     
     return Card(
-      key: ValueKey(category.id),
-      margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
       color: Colors.white,
       clipBehavior: Clip.antiAlias,
@@ -156,69 +252,6 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
         ),
       ),
     );
-  }
-
-  /// カテゴリーアイコンを構築
-  Widget _buildCategoryIcon(Category category) {
-    if (category.backgroundImagePath != null) {
-      return FutureBuilder<File?>(
-        future: CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!),
-        builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null) {
-            return Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: FileImage(snapshot.data!),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            );
-          }
-          return _buildDefaultIcon(category);
-        },
-      );
-    }
-    return _buildDefaultIcon(category);
-  }
-
-  /// デフォルトアイコンを構築
-  Widget _buildDefaultIcon(Category category) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: category.id == 'default_all' 
-            ? const Color(0xFF009977).withOpacity(0.1)
-            : Colors.grey[100],
-      ),
-      child: Icon(
-        category.id == 'default_all' 
-            ? Icons.all_inclusive 
-            : Icons.folder_outlined,
-        color: category.id == 'default_all' 
-            ? const Color(0xFF009977)
-            : Colors.grey[600],
-        size: 20,
-      ),
-    );
-  }
-
-  /// 並び替え処理
-  void _onReorder(int oldIndex, int newIndex) {
-    if (oldIndex < newIndex) {
-      newIndex -= 1;
-    }
-
-    final categories = List<Category>.from(ref.read(categoryListProvider));
-    final item = categories.removeAt(oldIndex);
-    categories.insert(newIndex, item);
-
-    // 並び替え実行
-    ref.read(categoryListProvider.notifier).reorderCategories(categories);
   }
 
   /// メニューアクション処理
