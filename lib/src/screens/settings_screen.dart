@@ -224,7 +224,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 
                 // レビューを書く
                 _buildSettingItem(
-                  icon: Icons.star_outline,
+                  icon: Icons.rate_review,
                   title: 'レビューを書く',
                   subtitle: 'App Storeでレビューする',
                   onTap: _launchAppStore,
@@ -462,7 +462,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return Column(
         children: [
           _buildSettingItem(
-            icon: Icons.star,
+            icon: Icons.workspace_premium,
             title: 'プレミアム版',
             subtitle: '${planName}でご利用中',
             onTap: () => _showSubscriptionDetails(),
@@ -491,7 +491,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } else {
       // 無料版の場合はプレミアム機能の案内（控えめに）
       return _buildSettingItem(
-        icon: Icons.star_outline,
+        icon: Icons.workspace_premium,
         title: 'プレミアム版',
         subtitle: 'カテゴリー管理などの追加機能',
         onTap: () => _showPremiumPurchaseScreen(),
@@ -733,7 +733,7 @@ class _SubscriptionDetailsDialog extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.star,
+                  Icons.workspace_premium,
                   color: Colors.amber[600],
                   size: 28,
                 ),
