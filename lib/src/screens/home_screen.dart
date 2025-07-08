@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -841,6 +842,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         itemCount: hobbiesInCategory.length,
                         padding: const EdgeInsets.only(top: 40, bottom: 120), // カテゴリ名とFloating ToolBarのための余白
                         onReorder: (oldIndex, newIndex) => _onReorderHobbies(category, oldIndex, newIndex, hobbiesInCategory),
+                        proxyDecorator: (child, index, animation) {
+                          return AnimatedBuilder(
+                            animation: animation,
+                            builder: (BuildContext context, Widget? child) {
+                              final double animValue = Curves.easeInOut.transform(animation.value);
+                              final double elevation = lerpDouble(2, 6, animValue)!;
+                              final double scale = lerpDouble(1.0, 1.02, animValue)!;
+                              return Transform.scale(
+                                scale: scale,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.15 + (0.1 * animValue)),
+                                        blurRadius: elevation * 2,
+                                        offset: Offset(0, elevation / 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: child,
+                          );
+                        },
                         itemBuilder: (context, index) {
                           final hobby = hobbiesInCategory[index];
                           final imagePath = p.join(dirPath, 'images', hobby.imageFileName);
@@ -876,28 +904,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     required String dirPath,
     required List<dynamic> hobbiesInCategory,
   }) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DetailHobbyScreen(hobby: hobby),
-          ),
-        );
-      },
-      child: Container(
-        height: 120, // カード全体の高さを固定
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Material(
+      color: Colors.transparent,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DetailHobbyScreen(hobby: hobby),
             ),
-          ],
-        ),
+          );
+        },
+        child: Container(
+          height: 120, // カード全体の高さを固定
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
         child: Row(
           children: [
             // 左側：アイコン画像エリア
@@ -1045,7 +1075,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
