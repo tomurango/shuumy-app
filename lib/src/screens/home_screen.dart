@@ -913,16 +913,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                             animation: animation,
                             builder: (BuildContext context, Widget? child) {
                               final double animValue = Curves.easeInOut.transform(animation.value);
-                              return Material(
-                                elevation: 3.0 + (2.0 * animValue), // MD3準拠のelevation変化
-                                borderRadius: BorderRadius.circular(12),
-                                color: Theme.of(context).colorScheme.surfaceContainerLow,
-                                child: child,
+                              return Transform.scale(
+                                scale: 1.0 + (0.03 * animValue), // 僅かに大きくする
+                                child: Material(
+                                  elevation: 3.0 + (2.0 * animValue), // MD3準拠のelevation変化
+                                  borderRadius: BorderRadius.circular(12),
+                                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                                  child: child,
+                                ),
                               );
                             },
                             child: child,
                           );
                         },
+                        childWhenDragging: const SizedBox.shrink(), // ドラッグ中は元の位置を空にする
                         itemBuilder: (context, index) {
                           final hobby = hobbiesInCategory[index];
                           final imagePath = p.join(dirPath, 'images', hobby.imageFileName);

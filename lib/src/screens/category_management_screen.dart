@@ -70,21 +70,12 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                     animation: animation,
                     builder: (BuildContext context, Widget? child) {
                       final double animValue = Curves.easeInOut.transform(animation.value);
-                      final double elevation = 2.0 + (4.0 * animValue);
-                      final double scale = 1.0 + (0.02 * animValue);
                       return Transform.scale(
-                        scale: scale,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15 + (0.1 * animValue)),
-                                blurRadius: elevation * 2,
-                                offset: Offset(0, elevation / 2),
-                              ),
-                            ],
-                          ),
+                        scale: 1.0 + (0.03 * animValue), // 僅かに大きくする
+                        child: Material(
+                          elevation: 3.0 + (2.0 * animValue), // MD3準拠のelevation変化
+                          borderRadius: BorderRadius.circular(12),
+                          color: Theme.of(context).colorScheme.surfaceContainerLow,
                           child: child,
                         ),
                       );
@@ -92,6 +83,7 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                     child: child,
                   );
                 },
+                childWhenDragging: const SizedBox.shrink(), // ドラッグ中は元の位置を空にする
                 itemBuilder: (context, index) {
                   final category = categories[index];
                   return Padding(
@@ -179,8 +171,11 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
     final isDefault = category.id == 'default_all';
     
     return Card(
-      elevation: 2,
-      color: Colors.white,
+      elevation: 1.0, // MD3準拠のelevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12), // MD3推奨の12px
+      ),
+      color: Theme.of(context).colorScheme.surfaceContainerLow, // MD3 Surface container
       clipBehavior: Clip.antiAlias,
       child: ListTile(
         leading: Row(
