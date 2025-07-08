@@ -634,6 +634,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     });
   }
 
+  /// 趣味の並べ替え処理
+  void _onReorderHobbies(Category category, int oldIndex, int newIndex, List<dynamic> hobbiesInCategory) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    // 並べ替え後のリストを作成
+    final reorderedHobbies = List<dynamic>.from(hobbiesInCategory);
+    final item = reorderedHobbies.removeAt(oldIndex);
+    reorderedHobbies.insert(newIndex, item);
+
+    // 並べ替えを実行
+    ref.read(hobbyListProvider.notifier).reorderHobbiesInCategory(category.id, reorderedHobbies.cast<Hobby>());
+  }
+
   /// カテゴリー選択ドロップダウンを表示
   void _showCategoryDropdown(BuildContext context) {
     final categories = ref.read(categoryListProvider);
@@ -822,9 +837,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         ).createShader(bounds);
                       },
                       blendMode: BlendMode.dstIn,
-                      child: ListView.builder(
+                      child: ReorderableListView.builder(
                         itemCount: hobbiesInCategory.length,
                         padding: const EdgeInsets.only(top: 40, bottom: 120), // カテゴリ名とFloating ToolBarのための余白
+                        onReorder: (oldIndex, newIndex) => _onReorderHobbies(category, oldIndex, newIndex, hobbiesInCategory),
                         itemBuilder: (context, index) {
                           final hobby = hobbiesInCategory[index];
                           final imagePath = p.join(dirPath, 'images', hobby.imageFileName);
@@ -832,11 +848,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           final exists = file.existsSync();
 
                           return Padding(
+                            key: ValueKey(hobby.id),
                             padding: const EdgeInsets.only(bottom: 16),
                             child: _buildHobbyCard(
                               hobby: hobby,
                               imageFile: exists ? file : null,
                               dirPath: dirPath,
+                              hobbiesInCategory: hobbiesInCategory,
                             ),
                           );
                         },
@@ -856,6 +874,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     required Hobby hobby,
     required File? imageFile,
     required String dirPath,
+    required List<dynamic> hobbiesInCategory,
   }) {
     return GestureDetector(
       onTap: () {
@@ -990,21 +1009,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               ),
             ),
             
-            // 右端：オプションボタン
+            // 右端：並べ替えハンドルとオプションボタン
             Container(
               padding: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                onPressed: () => _showOptionsMenu(context, hobby, ref),
-                icon: Icon(
-                  Icons.more_vert,
-                  color: Colors.grey[600],
-                  size: 20,
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 32,
-                ),
-                padding: const EdgeInsets.all(6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 並べ替えハンドル
+                  ReorderableDragStartListener(
+                    index: hobbiesInCategory.indexOf(hobby),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.drag_handle,
+                        color: Colors.grey[500],
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  // オプションボタン
+                  IconButton(
+                    onPressed: () => _showOptionsMenu(context, hobby, ref),
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: Colors.grey[600],
+                      size: 20,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    padding: const EdgeInsets.all(6),
+                  ),
+                ],
               ),
             ),
           ],

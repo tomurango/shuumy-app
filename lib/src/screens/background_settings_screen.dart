@@ -6,7 +6,6 @@ import '../services/background_image_service.dart';
 import '../services/category_service.dart';
 import '../providers/premium_provider.dart';
 import '../providers/category_provider.dart';
-import '../models/category.dart';
 
 class BackgroundSettingsScreen extends ConsumerStatefulWidget {
   final String? initialCategoryId;
@@ -49,7 +48,7 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
         );
         
         if (category.backgroundImagePath != null) {
-          final file = await CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!);
+          await CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!);
           config = BackgroundImageConfig(
             type: BackgroundType.custom,
             customFileName: category.backgroundImagePath,

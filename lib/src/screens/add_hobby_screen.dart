@@ -102,15 +102,22 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
                 memo: memo.isEmpty ? null : memo,
                 imageFileName: fileName,
                 categoryId: _selectedCategoryId,
+                order: 0, // 一時的な値、後で正しい値に更新
                 createdAt: now,
                 updatedAt: now,
               );
 
               final hobbies = await HobbyJsonService.loadHobbies();
-              hobbies.add(newHobby);
+              
+              // 選択されたカテゴリの最大orderを取得
+              final categoryHobbies = hobbies.where((h) => h.categoryId == _selectedCategoryId).toList();
+              final maxOrder = categoryHobbies.isEmpty ? 0 : categoryHobbies.map((h) => h.order).reduce((a, b) => a > b ? a : b);
+              
+              final hobbyWithOrder = newHobby.copyWith(order: maxOrder + 1);
+              hobbies.add(hobbyWithOrder);
               await HobbyJsonService.saveHobbies(hobbies);
 
-              ref.read(hobbyListProvider.notifier).add(newHobby);
+              ref.read(hobbyListProvider.notifier).add(hobbyWithOrder);
 
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(

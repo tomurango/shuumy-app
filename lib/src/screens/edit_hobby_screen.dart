@@ -120,6 +120,7 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
                 memo: memo.isEmpty ? null : memo,
                 imageFileName: imageFileName,
                 categoryId: _selectedCategoryId,
+                order: widget.hobby.order, // 順序は変更しない
                 createdAt: widget.hobby.createdAt,
                 updatedAt: DateTime.now(),
               );

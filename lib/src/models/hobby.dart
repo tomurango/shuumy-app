@@ -6,6 +6,7 @@ class Hobby {
   final String? memo;
   final String imageFileName;
   final String categoryId;
+  final int order;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -15,6 +16,7 @@ class Hobby {
     this.memo,
     required this.imageFileName,
     required this.categoryId,
+    required this.order,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -29,6 +31,7 @@ class Hobby {
     'memo': memo,
     'imageFileName': imageFileName,
     'categoryId': categoryId,
+    'order': order,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
   };
@@ -41,6 +44,7 @@ class Hobby {
       memo: json['memo'] as String?,
       imageFileName: json['imageFileName'] as String,
       categoryId: json['categoryId'] as String? ?? 'default_all', // 既存データの互換性
+      order: json['order'] as int? ?? 0, // 既存データの互換性
       createdAt: json['createdAt'] != null 
           ? DateTime.parse(json['createdAt'] as String)
           : now,
@@ -56,6 +60,7 @@ class Hobby {
     String? memo,
     String? imageFileName,
     String? categoryId,
+    int? order,
   }) {
     return Hobby(
       id: id,
@@ -63,6 +68,7 @@ class Hobby {
       memo: memo ?? this.memo,
       imageFileName: imageFileName ?? this.imageFileName,
       categoryId: categoryId ?? this.categoryId,
+      order: order ?? this.order,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
