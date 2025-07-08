@@ -70,13 +70,23 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                     animation: animation,
                     builder: (BuildContext context, Widget? child) {
                       final double animValue = Curves.easeInOut.transform(animation.value);
-                      final double elevation = lerpDouble(2, 6, animValue)!;
-                      final double scale = lerpDouble(1.0, 1.02, animValue)!;
+                      final double elevation = lerpDouble(2, 8, animValue)!;
+                      final double scale = lerpDouble(1.0, 1.03, animValue)!;
                       return Transform.scale(
                         scale: scale,
-                        child: Material(
-                          elevation: elevation,
-                          borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15 + (0.15 * animValue)),
+                                blurRadius: elevation * 2,
+                                offset: Offset(0, elevation / 2),
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
                           child: child,
                         ),
                       );
@@ -103,6 +113,8 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
       key: ValueKey(category.id),
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
       child: ListTile(
         leading: Row(
           mainAxisSize: MainAxisSize.min,
