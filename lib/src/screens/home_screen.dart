@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -553,28 +552,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.only(right: 20, top: 16),
-                  child: GestureDetector(
-                    onTap: _exitReorderMode,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+                  child: FilledButton(
+                    onPressed: _exitReorderMode,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                      foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                      elevation: 1.0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12), // MD3準拠の12px
                       ),
-                      child: const Text(
-                        '完了',
-                        style: TextStyle(
-                          color: Colors.black87,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    ),
+                    child: const Text(
+                      '完了',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -920,23 +913,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                             animation: animation,
                             builder: (BuildContext context, Widget? child) {
                               final double animValue = Curves.easeInOut.transform(animation.value);
-                              final double elevation = lerpDouble(2, 6, animValue)!;
-                              final double scale = lerpDouble(1.0, 1.02, animValue)!;
-                              return Transform.scale(
-                                scale: scale,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.15 + (0.1 * animValue)),
-                                        blurRadius: elevation * 2,
-                                        offset: Offset(0, elevation / 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: child,
-                                ),
+                              return Material(
+                                elevation: 3.0 + (2.0 * animValue), // MD3準拠のelevation変化
+                                borderRadius: BorderRadius.circular(12),
+                                color: Theme.of(context).colorScheme.surfaceContainerLow,
+                                child: child,
                               );
                             },
                             child: child,
@@ -973,27 +954,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                           offset: Offset(shakeOffset, 0),
                                           child: Transform.rotate(
                                             angle: rotationAngle,
-                                            child: Transform.scale(
-                                              scale: 0.98, // 少し縮小
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  borderRadius: BorderRadius.circular(20),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: const Color(0xFF009977).withOpacity(0.3),
-                                                      blurRadius: 12,
-                                                      offset: const Offset(0, 6),
-                                                      spreadRadius: 2,
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: _buildHobbyCard(
-                                                  hobby: hobby,
-                                                  imageFile: exists ? file : null,
-                                                  dirPath: dirPath,
-                                                  hobbiesInCategory: hobbiesInCategory,
-                                                ),
-                                              ),
+                                            child: _buildHobbyCard(
+                                              hobby: hobby,
+                                              imageFile: exists ? file : null,
+                                              dirPath: dirPath,
+                                              hobbiesInCategory: hobbiesInCategory,
                                             ),
                                           ),
                                         );
@@ -1027,32 +992,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     required String dirPath,
     required List<dynamic> hobbiesInCategory,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => DetailHobbyScreen(hobby: hobby),
-            ),
-          );
-        },
-        child: Container(
-          height: 120, // カード全体の高さを固定
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+    return Card(
+      elevation: _isReorderMode ? 3.0 : 1.0, // MD3準拠のelevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12), // MD3推奨の12px
+      ),
+      color: Theme.of(context).colorScheme.surfaceContainerLow, // MD3 Surface container
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DetailHobbyScreen(hobby: hobby),
               ),
-            ],
-          ),
-          child: Row(
-            children: [
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 120, // カード全体の高さを固定
+            child: Row(
+              children: [
               // 左側：アイコン画像エリア
               Container(
                 width: 100,
@@ -1203,7 +1165,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildEmptyState([Category? category]) {
