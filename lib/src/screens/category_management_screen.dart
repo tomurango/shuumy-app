@@ -65,27 +65,6 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                 padding: const EdgeInsets.all(16),
                 itemCount: categories.length,
                 onReorder: _onReorder,
-                proxyDecorator: (child, index, animation) {
-                  return AnimatedBuilder(
-                    animation: animation,
-                    builder: (BuildContext context, Widget? child) {
-                      final double animValue = Curves.easeInOut.transform(animation.value);
-                      final double elevation = lerpDouble(2, 8, animValue)!;
-                      final double scale = lerpDouble(1.0, 1.02, animValue)!;
-                      return Transform.scale(
-                        scale: scale,
-                        child: Material(
-                          elevation: elevation,
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          clipBehavior: Clip.antiAlias,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: child,
-                  );
-                },
                 itemBuilder: (context, index) {
                   final category = categories[index];
                   return _buildCategoryItem(category, index);
