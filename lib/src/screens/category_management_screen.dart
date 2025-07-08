@@ -87,11 +87,17 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                               ),
                             ],
                           ),
-                          child: child,
+                          child: Opacity(
+                            opacity: 1.0, // ドラッグ中のカードは完全に表示
+                            child: child,
+                          ),
                         ),
                       );
                     },
-                    child: child,
+                    child: Opacity(
+                      opacity: 0.0, // 元のカードを透明にして二重表示を防ぐ
+                      child: child,
+                    ),
                   );
                 },
                 itemBuilder: (context, index) {
