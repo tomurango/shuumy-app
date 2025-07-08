@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,6 +65,25 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                 padding: const EdgeInsets.all(16),
                 itemCount: categories.length,
                 onReorder: _onReorder,
+                proxyDecorator: (child, index, animation) {
+                  return AnimatedBuilder(
+                    animation: animation,
+                    builder: (BuildContext context, Widget? child) {
+                      final double animValue = Curves.easeInOut.transform(animation.value);
+                      final double elevation = lerpDouble(2, 6, animValue)!;
+                      final double scale = lerpDouble(1.0, 1.02, animValue)!;
+                      return Transform.scale(
+                        scale: scale,
+                        child: Material(
+                          elevation: elevation,
+                          borderRadius: BorderRadius.circular(12),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: child,
+                  );
+                },
                 itemBuilder: (context, index) {
                   final category = categories[index];
                   return _buildCategoryItem(category, index);
