@@ -48,13 +48,21 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
         );
         
         if (category.backgroundImagePath != null) {
-          await CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!);
-          config = BackgroundImageConfig(
-            type: BackgroundType.custom,
-            customFileName: category.backgroundImagePath,
-          );
+          // カテゴリ専用背景があるかチェック
+          final backgroundFile = await CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!);
+          
+          if (backgroundFile != null) {
+            config = BackgroundImageConfig(
+              type: BackgroundType.custom,
+              customFileName: category.backgroundImagePath,
+            );
+          } else {
+            // カテゴリ専用背景がない場合はグローバル背景を表示
+            config = await BackgroundImageService.getCurrentConfig();
+          }
         } else {
-          config = BackgroundImageConfig.defaultConfig();
+          // カテゴリ専用背景が設定されていない場合はグローバル背景を表示
+          config = await BackgroundImageService.getCurrentConfig();
         }
       } else {
         // グローバル背景を読み込み
@@ -273,7 +281,7 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
                             borderRadius: BorderRadius.circular(12),
                             child: _currentConfig != null
                                 ? FutureBuilder<ImageProvider?>(
-                                    future: _currentConfig!.getImageProvider(),
+                                    future: _getCurrentBackgroundImageProvider(),
                                     builder: (context, snapshot) {
                                       if (snapshot.hasData && snapshot.data != null) {
                                         return Image(
@@ -302,7 +310,20 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
                           ),
                         ),
                         
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 12),
+                        
+                        // 現在選択中のカテゴリ表示
+                        Text(
+                          _getSelectedCategoryDescription(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        
+                        const SizedBox(height: 28),
                         
                         // 操作ボタン
                         const Text(
@@ -385,6 +406,86 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     );
+  }
+
+  /// 現在の背景画像プロバイダーを取得（カテゴリ専用背景対応）
+  Future<ImageProvider?> _getCurrentBackgroundImageProvider() async {
+    try {
+      if (_selectedCategoryId != null) {
+        // カテゴリ専用背景を取得
+        final categories = ref.read(categoryListProvider);
+        final category = categories.firstWhere(
+          (c) => c.id == _selectedCategoryId,
+          orElse: () => throw Exception('カテゴリが見つかりません'),
+        );
+        
+        if (category.backgroundImagePath != null) {
+          final backgroundFile = await CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!);
+          if (backgroundFile != null) {
+            return FileImage(backgroundFile);
+          }
+        }
+        
+        // カテゴリ専用背景がない場合はグローバル背景
+        final globalConfig = await BackgroundImageService.getCurrentConfig();
+        return await globalConfig.getImageProvider();
+      } else {
+        // グローバル背景
+        return await _currentConfig!.getImageProvider();
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// 選択中のカテゴリの説明を取得
+  String _getSelectedCategoryDescription() {
+    if (_selectedCategoryId == null) {
+      return 'グローバル背景のプレビュー';
+    } else {
+      final categories = ref.read(categoryListProvider);
+      final category = categories.firstWhere(
+        (c) => c.id == _selectedCategoryId,
+        orElse: () => throw Exception('カテゴリが見つかりません'),
+      );
+      
+      if (category.backgroundImagePath != null) {
+        return '「${category.name}」カテゴリの専用背景';
+      } else {
+        return '「${category.name}」カテゴリ（グローバル背景を継承）';
+      }
+    }
+  }
+
+  /// カテゴリのプレビュー画像を取得
+  Future<ImageProvider?> _getCategoryPreviewImage(String? categoryId) async {
+    try {
+      if (categoryId == null) {
+        // グローバル背景
+        final config = await BackgroundImageService.getCurrentConfig();
+        return await config.getImageProvider();
+      } else {
+        // カテゴリ別背景
+        final categories = ref.read(categoryListProvider);
+        final category = categories.firstWhere(
+          (c) => c.id == categoryId,
+          orElse: () => throw Exception('カテゴリが見つかりません'),
+        );
+        
+        if (category.backgroundImagePath != null) {
+          final file = await CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!);
+          if (file != null) {
+            return FileImage(file);
+          }
+        }
+        
+        // カテゴリ専用背景がない場合、グローバル背景を使用
+        final globalConfig = await BackgroundImageService.getCurrentConfig();
+        return await globalConfig.getImageProvider();
+      }
+    } catch (e) {
+      return null;
+    }
   }
 
   /// カテゴリ選択UI
@@ -490,10 +591,39 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFF009977) : Colors.grey[600],
-              size: 24,
+            // プレビューサムネイル
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF009977) : Colors.grey[300]!,
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: FutureBuilder<ImageProvider?>(
+                  future: _getCategoryPreviewImage(categoryId),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return Image(
+                        image: snapshot.data!,
+                        fit: BoxFit.cover,
+                      );
+                    }
+                    return Container(
+                      color: Colors.grey[100],
+                      child: Icon(
+                        icon,
+                        color: isSelected ? const Color(0xFF009977) : Colors.grey[400],
+                        size: 20,
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
