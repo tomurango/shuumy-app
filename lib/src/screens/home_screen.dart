@@ -30,7 +30,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   int _currentPageIndex = 0;
   bool _isBackgroundViewMode = false;
   bool _isReorderMode = false;
+  bool _isActivityRecordMode = false;
+  bool _showCalendarContent = false; // カレンダーコンテンツの表示制御
+  bool _hideHobbyCards = false; // 趣味カードの非表示制御
+  bool _showToolbar = true; // ツールバーの表示制御
   late AnimationController _shakeController;
+  late AnimationController _transitionController;
+  late AnimationController _toolbarController;
   Map<String, ScrollController> _scrollControllers = {};
   Map<String, bool> _showTopShadow = {};
   bool _isSnackBarShowing = false;
@@ -41,6 +47,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     _pageController = PageController();
     _shakeController = AnimationController(
       duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _transitionController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _toolbarController = AnimationController(
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
   }
@@ -72,6 +86,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     _pageController.dispose();
     _tabController?.dispose();
     _shakeController.dispose();
+    _transitionController.dispose();
+    _toolbarController.dispose();
     for (final controller in _scrollControllers.values) {
       controller.dispose();
     }
@@ -101,6 +117,183 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     });
     _shakeController.stop();
     _shakeController.reset();
+  }
+
+  /// 活動記録モードの切り替え
+  void _toggleActivityRecordMode() async {
+    if (_isActivityRecordMode) {
+      await _exitActivityRecordMode();
+    } else {
+      await _enterActivityRecordMode();
+    }
+  }
+
+  /// 動的なスクロール量を計算（画面全体の高さ基準）
+  double _calculateScrollAmount() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    // 画面全体の高さ + 余裕分を空白の高さとして使用
+    // これにより、趣味カードが確実に画面外に押し出される
+    return screenHeight + 200.0; // 画面全体 + 余裕分
+  }
+
+  /// カレンダーコンテンツの高さを計算
+  double _calculateCalendarContentHeight() {
+    // カレンダーカード: height(150) + margin bottom(16)
+    const calendarCardHeight = 150.0 + 16.0;
+    
+    // 活動一覧カード: height(150) + margin bottom(16)
+    const activityCardHeight = 150.0 + 16.0;
+    
+    return calendarCardHeight + activityCardHeight;
+  }
+
+  /// ツールバーアニメーション（退場→登場）
+  Future<void> _animateToolbarTransition() async {
+    // 1. 現在のツールバーを下にスライドアウト
+    await _toolbarController.reverse();
+    
+    // 2. 少し待機
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // 3. モード切り替え
+    setState(() {
+      _isActivityRecordMode = !_isActivityRecordMode;
+    });
+    
+    // 4. 新しいツールバーを下から上にスライドイン
+    await _toolbarController.forward();
+  }
+
+  /// 活動記録モード開始（段階的アニメーション）
+  Future<void> _enterActivityRecordMode() async {
+    final categories = ref.read(categoryListProvider);
+    if (categories.isEmpty || _currentPageIndex >= categories.length) {
+      return;
+    }
+    
+    final currentCategoryId = categories[_currentPageIndex].id;
+    final scrollController = _getScrollController(currentCategoryId);
+    final scrollAmount = _calculateScrollAmount();
+    
+    // ツールバーアニメーションとコンテンツアニメーションを並行実行
+    final toolbarFuture = _animateToolbarTransition();
+    final contentFuture = _executeContentAnimation(scrollController, scrollAmount);
+    
+    await Future.wait([toolbarFuture, contentFuture]);
+  }
+
+  /// コンテンツアニメーションを実行
+  Future<void> _executeContentAnimation(ScrollController scrollController, double scrollAmount) async {
+    // 段階1: 空白追加アニメーション (200ms)
+    await _transitionController.animateTo(
+      1.0,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+    
+    // 段階2: 自動スクロール (300ms)
+    await scrollController.animateTo(
+      scrollAmount,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    
+    // 段階3: カレンダー領域を画面外に追加（事前にスクロール位置調整）
+    final calendarHeight = _calculateCalendarContentHeight();
+    final currentScrollPosition = scrollController.offset;
+    
+    // 先にスクロール位置をカレンダー分だけ下にずらして、画面外に追加されるように調整
+    if (scrollController.hasClients) {
+      scrollController.jumpTo(currentScrollPosition + calendarHeight);
+    }
+    
+    // スクロール位置調整後にカレンダーを追加（これで画面外に追加される）
+    setState(() {
+      _showCalendarContent = true;
+    });
+    
+    // 少し待機
+    await Future.delayed(const Duration(milliseconds: 50));
+    
+    // 段階4: 趣味カード非表示 (200ms)
+    setState(() {
+      _hideHobbyCards = true;
+    });
+    // 段階5a: カレンダーを下まで自動スクロール (300ms)
+    await Future.delayed(const Duration(milliseconds: 500));
+    await scrollController.animateTo(
+      0.0, // 最上部に戻る
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    
+    // 段階5b: 空白領域を削除 (200ms)
+    await _transitionController.animateTo(
+      0.0,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
+
+  /// 活動記録モード終了
+  Future<void> _exitActivityRecordMode() async {
+    final categories = ref.read(categoryListProvider);
+    
+    // ツールバーアニメーションとコンテンツアニメーションを並行実行
+    final toolbarFuture = _animateToolbarTransition();
+    
+    Future<void> contentFuture;
+    if (categories.isNotEmpty && _currentPageIndex < categories.length) {
+      final currentCategoryId = categories[_currentPageIndex].id;
+      final scrollController = _getScrollController(currentCategoryId);
+      contentFuture = _executeExitContentAnimation(scrollController);
+    } else {
+      contentFuture = _transitionController.reverse();
+    }
+    
+    await Future.wait([toolbarFuture, contentFuture]);
+    
+    setState(() {
+      _showCalendarContent = false;
+      _hideHobbyCards = false;
+    });
+  }
+
+  /// 終了時のコンテンツアニメーションを実行
+  Future<void> _executeExitContentAnimation(ScrollController scrollController) async {
+    // 1. 空白要素を追加（上向きに移動させる準備）
+    await _transitionController.animateTo(1.0, duration: const Duration(milliseconds: 200));
+    
+    // 2. スクロールで上に移動（カレンダーを画面外に）
+    final scrollAmount = _calculateScrollAmount();
+    await scrollController.animateTo(
+      scrollAmount,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+
+    // 3. 趣味カードを表示
+    setState(() {
+      _hideHobbyCards = false;
+    });
+    
+    await Future.delayed(const Duration(milliseconds: 200));
+    
+    // 4. カレンダーを削除（画面外なので見えない）
+    setState(() {
+      _showCalendarContent = false;
+    });
+    
+    // 5. 最上部にスクロール戻し
+    await scrollController.animateTo(
+      0.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    
+    // 6. 空白要素を削除
+    await _transitionController.animateTo(0.0, duration: const Duration(milliseconds: 200));
   }
 
   /// カテゴリー追加の誘導SnackBarを表示
@@ -525,7 +718,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // カテゴリー別コンテンツ（全画面）
+          // 背景表示用のPageView（常に表示）
           PageView.builder(
             controller: _pageController,
             itemCount: categories.length,
@@ -541,6 +734,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               return _buildCategoryPage(category);
             },
           ),
+          
+          // 活動記録モードのコンテンツオーバーレイ（インライン版に変更）
+          // if (_isActivityRecordMode)
+          //   _buildActivityRecordContentOverlay(),
           
           // カテゴリ名表示（左上）
           if (!_isBackgroundViewMode)
@@ -650,81 +847,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               child: SafeArea(
                 child: Container(
                   margin: const EdgeInsets.all(20),
-                  child: Material(
-                    elevation: 3.0, // MD3準拠のelevation
-                    color: Theme.of(context).colorScheme.surfaceContainer, // MD3 Surface container
-                    borderRadius: BorderRadius.circular(50),
-                    clipBehavior: Clip.antiAlias,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // 左矢印（前のカテゴリ）
-                          _buildToolbarButton(
-                            icon: Icons.arrow_back_ios_new,
-                            onPressed: _currentPageIndex > 0 
-                                ? () => _navigateToCategory(_currentPageIndex - 1)
-                                : (categories.length == 1 && categories.first.id == 'default_all')
-                                    ? () => _showCategoryAdditionGuidance()
-                                    : null,
-                          ),
-                          
-                          // 右矢印（次のカテゴリ）
-                          _buildToolbarButton(
-                            icon: Icons.arrow_forward_ios,
-                            onPressed: _currentPageIndex < categories.length - 1
-                                ? () => _navigateToCategory(_currentPageIndex + 1)
-                                : (categories.length == 1 && categories.first.id == 'default_all')
-                                    ? () => _showCategoryAdditionGuidance()
-                                    : null,
-                          ),
-                          
-                          // 趣味追加
-                          _buildToolbarButton(
-                            icon: Icons.add,
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const AddHobbyScreen(),
-                                ),
-                              );
-                            },
-                            isAccent: true,
-                            isPill: true,
-                          ),
-                          
-                          // 活動記録確認（未実装）
-                          _buildToolbarButton(
-                            icon: Icons.bar_chart,
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('活動記録機能は準備中です'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            },
-                          ),
-                          
-                          // 設定
-                          _buildToolbarButton(
-                            icon: Icons.settings,
-                            onPressed: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
-                                ),
-                              );
-                              
-                              if (result == true) {
-                                ref.read(categoryListProvider.notifier).reload();
-                              }
-                            },
-                          ),
-                        ],
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.0, 2.0), // 完全に画面外（下）
+                      end: Offset.zero, // 正常位置
+                    ).animate(CurvedAnimation(
+                      parent: _toolbarController,
+                      curve: Curves.easeInOut,
+                    )),
+                    child: Material(
+                      elevation: 3.0, // MD3準拠のelevation
+                      color: Theme.of(context).colorScheme.surfaceContainer, // MD3 Surface container
+                      borderRadius: BorderRadius.circular(50),
+                      clipBehavior: Clip.antiAlias,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: _isActivityRecordMode 
+                              ? _buildActivityRecordToolbar(categories)
+                              : _buildNormalToolbar(categories),
+                        ),
                       ),
                     ),
                   ),
@@ -945,7 +1088,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             // コンテンツ（背景表示モード時は非表示）
             if (!_isBackgroundViewMode)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 130, 20, 0), // 上部スクロール範囲をさらに下にずらす
+              padding: const EdgeInsets.fromLTRB(20, 130, 20, 0),
               child: FutureBuilder<Directory>(
                   future: getApplicationDocumentsDirectory(),
                   builder: (context, snapshot) {
@@ -961,8 +1104,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     
                     return ReorderableListView.builder(
                       scrollController: _getScrollController(category.id),
-                      itemCount: hobbiesInCategory.length,
-                      padding: const EdgeInsets.only(top: 30, bottom: 120), // ツールバー分の余白を確保
+                      itemCount: hobbiesInCategory.length + 2, // カレンダー要素と空白要素用に+2
+                      padding: const EdgeInsets.only(top: 15, bottom: 120), // ツールバー分の余白を確保
                       onReorder: (oldIndex, newIndex) => _onReorderHobbies(category, oldIndex, newIndex, hobbiesInCategory),
                       buildDefaultDragHandles: false, // デフォルトのドラッグハンドルを無効化
                       scrollDirection: Axis.vertical,
@@ -980,10 +1123,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         );
                       },
                       itemBuilder: (context, index) {
+                        // カレンダー要素（最後から2番目）
+                        if (index == hobbiesInCategory.length) {
+                          return Container(
+                            key: const ValueKey('calendar_content'),
+                            child: _showCalendarContent 
+                                ? _buildActivityRecordContentInline() // 制御変数による表示
+                                : const SizedBox.shrink(), // 非表示
+                          );
+                        }
+                        
+                        // 空白要素（最後）
+                        if (index == hobbiesInCategory.length + 1) {
+                          return AnimatedBuilder(
+                            key: const ValueKey('spacer'),
+                            animation: _transitionController,
+                            builder: (context, child) {
+                              // 動的に計算された空白要素の高さ
+                              final baseSpacerHeight = _calculateScrollAmount();
+                              final spacerHeight = _transitionController.value * baseSpacerHeight;
+                              return Container(
+                                height: spacerHeight,
+                                color: Colors.transparent, // 透明に変更
+                              );
+                            },
+                          );
+                        }
+                        
+                        // 通常の趣味カード
                         final hobby = hobbiesInCategory[index];
                         final imagePath = p.join(dirPath, 'images', hobby.imageFileName);
                         final file = File(imagePath);
                         final exists = file.existsSync();
+
+                        // 趣味カード非表示制御
+                        if (_hideHobbyCards) {
+                          return Container(
+                            key: ValueKey(hobby.id),
+                            height: 0, // 高さ0で非表示
+                          );
+                        }
 
                         return Padding(
                           key: ValueKey(hobby.id),
@@ -1409,5 +1588,336 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         ),
       ],
     );
+  }
+
+  /// 活動記録コンテンツオーバーレイを構築
+  Widget _buildActivityRecordContentOverlay() {
+    final categories = ref.read(categoryListProvider);
+    final currentCategory = categories.isNotEmpty && _currentPageIndex < categories.length 
+        ? categories[_currentPageIndex] 
+        : null;
+    
+    return AnimatedBuilder(
+      animation: _transitionController,
+      builder: (context, child) {
+        final topPadding = 400 * (1 - _transitionController.value); // 下からスライドイン用のパディング
+        return Positioned(
+          top: 130, // カテゴリ名表示の下から開始
+          left: 0,
+          right: 0,
+          bottom: 120, // ツールバー分の余白
+          child: Container(
+            color: Colors.white, // 背景色を追加して趣味カードを隠す
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(20, 30 + topPadding, 20, 0), // 上部パディングをアニメーション
+        child: Column(
+          children: [
+            // 上部タイトルエリア
+            Container(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    currentCategory != null ? '${currentCategory.name}の活動記録' : '活動記録',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // カレンダーカード（プロトタイプ）
+            Container(
+              height: 200,
+              margin: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.calendar_month,
+                      size: 48,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'カレンダー表示\n（プロトタイプ）',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // 活動一覧カード（プロトタイプ）
+            Container(
+              height: 200,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.list_alt,
+                      size: 48,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      '活動一覧\n（プロトタイプ）',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        ),
+      ),
+        );
+      },
+    );
+  }
+
+  /// 活動記録コンテンツ（インライン版）を構築
+  Widget _buildActivityRecordContentInline() {
+    final categories = ref.read(categoryListProvider);
+    final currentCategory = categories.isNotEmpty && _currentPageIndex < categories.length 
+        ? categories[_currentPageIndex] 
+        : null;
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        
+        // カレンダーカード（プロトタイプ）
+        Container(
+          height: 150,
+          margin: const EdgeInsets.only(bottom: 16), // 趣味カードと同じ間隔
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.calendar_month,
+                    size: 36,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'カレンダー表示\n（プロトタイプ）',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+        // 活動一覧カード（プロトタイプ）
+        Container(
+          height: 150,
+          margin: const EdgeInsets.only(bottom: 16), // 趣味カードと同じ間隔
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.list_alt,
+                  size: 36,
+                  color: Colors.grey,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '活動一覧\n（プロトタイプ）',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 通常モードのツールバーを構築
+  List<Widget> _buildNormalToolbar(List<Category> categories) {
+    return [
+      // 左矢印（前のカテゴリ）
+      _buildToolbarButton(
+        icon: Icons.arrow_back_ios_new,
+        onPressed: _currentPageIndex > 0 
+            ? () => _navigateToCategory(_currentPageIndex - 1)
+            : (categories.length == 1 && categories.first.id == 'default_all')
+                ? () => _showCategoryAdditionGuidance()
+                : null,
+      ),
+      
+      // 右矢印（次のカテゴリ）
+      _buildToolbarButton(
+        icon: Icons.arrow_forward_ios,
+        onPressed: _currentPageIndex < categories.length - 1
+            ? () => _navigateToCategory(_currentPageIndex + 1)
+            : (categories.length == 1 && categories.first.id == 'default_all')
+                ? () => _showCategoryAdditionGuidance()
+                : null,
+      ),
+      
+      // 趣味追加
+      _buildToolbarButton(
+        icon: Icons.add,
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AddHobbyScreen(),
+            ),
+          );
+        },
+        isAccent: true,
+        isPill: true,
+      ),
+      
+      // 活動記録
+      _buildToolbarButton(
+        icon: Icons.bar_chart,
+        onPressed: _toggleActivityRecordMode,
+      ),
+      
+      // 設定
+      _buildToolbarButton(
+        icon: Icons.settings,
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SettingsScreen(),
+            ),
+          );
+          
+          if (result == true) {
+            ref.read(categoryListProvider.notifier).reload();
+          }
+        },
+      ),
+    ];
+  }
+
+  /// 活動記録モードのツールバーを構築
+  List<Widget> _buildActivityRecordToolbar(List<Category> categories) {
+    return [
+      // 左矢印（前のカテゴリ）
+      _buildToolbarButton(
+        icon: Icons.arrow_back_ios_new,
+        onPressed: _currentPageIndex > 0 
+            ? () => _navigateToCategory(_currentPageIndex - 1)
+            : null,
+      ),
+      
+      // 右矢印（次のカテゴリ）
+      _buildToolbarButton(
+        icon: Icons.arrow_forward_ios,
+        onPressed: _currentPageIndex < categories.length - 1
+            ? () => _navigateToCategory(_currentPageIndex + 1)
+            : null,
+      ),
+      
+      // 閉じる
+      _buildToolbarButton(
+        icon: Icons.close,
+        onPressed: _toggleActivityRecordMode,
+        isAccent: true,
+      ),
+      
+      // 設定
+      _buildToolbarButton(
+        icon: Icons.settings,
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SettingsScreen(),
+            ),
+          );
+          
+          if (result == true) {
+            ref.read(categoryListProvider.notifier).reload();
+          }
+        },
+      ),
+    ];
   }
 }
