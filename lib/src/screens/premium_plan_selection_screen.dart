@@ -97,6 +97,26 @@ class _PremiumPlanSelectionScreenState extends ConsumerState<PremiumPlanSelectio
     }
   }
 
+  /// 日本円での価格表示を取得（App Store Connectの設定が反映されるまでの一時対応）
+  String _getDisplayPrice(ProductDetails product, PremiumPlan plan) {
+    // USD価格が取得されている場合は日本円に変換して表示
+    if (product.currencyCode == 'USD') {
+      switch (plan) {
+        case PremiumPlan.monthly:
+          return '¥300';
+        case PremiumPlan.yearly:
+          return '¥2,500';
+        case PremiumPlan.lifetime:
+          return '¥5,000';
+        case PremiumPlan.free:
+          return '';
+      }
+    }
+    
+    // 正しい通貨の場合はそのまま表示
+    return product.price;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -372,7 +392,7 @@ class _PremiumPlanSelectionScreenState extends ConsumerState<PremiumPlanSelectio
                 ),
                 if (product != null)
                   Text(
-                    product.price,
+                    _getDisplayPrice(product, plan),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -452,6 +472,13 @@ class _PremiumPlanSelectionScreenState extends ConsumerState<PremiumPlanSelectio
       }
     } catch (e) {
       if (mounted) {
+        // ユーザーキャンセルの場合は無視
+        if (e.toString().contains('purchase_cancelled') || 
+            e.toString().contains('cancelled')) {
+          // キャンセル時は何も表示しない
+          return;
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('エラーが発生しました: $e'),

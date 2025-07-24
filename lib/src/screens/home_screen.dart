@@ -33,6 +33,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   late AnimationController _shakeController;
   Map<String, ScrollController> _scrollControllers = {};
   Map<String, bool> _showTopShadow = {};
+  bool _isSnackBarShowing = false;
 
   @override
   void initState() {
@@ -100,6 +101,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     });
     _shakeController.stop();
     _shakeController.reset();
+  }
+
+  /// カテゴリー追加の誘導SnackBarを表示
+  void _showCategoryAdditionGuidance() {
+    if (_isSnackBarShowing) return;
+    
+    setState(() {
+      _isSnackBarShowing = true;
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('カテゴリーを追加するには設定画面をご利用ください'),
+        backgroundColor: Colors.blue[600],
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: '設定画面へ',
+          textColor: Colors.white,
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SettingsScreen(),
+              ),
+            );
+            
+            if (result == true) {
+              ref.read(categoryListProvider.notifier).reload();
+            }
+          },
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    ).closed.then((_) {
+      // SnackBarが閉じられた時にフラグをリセット
+      if (mounted) {
+        setState(() {
+          _isSnackBarShowing = false;
+        });
+      }
+    });
   }
 
   /// カテゴリー別の背景画像を取得
@@ -621,7 +665,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                             icon: Icons.arrow_back_ios_new,
                             onPressed: _currentPageIndex > 0 
                                 ? () => _navigateToCategory(_currentPageIndex - 1)
-                                : null,
+                                : (categories.length == 1 && categories.first.id == 'default_all')
+                                    ? () => _showCategoryAdditionGuidance()
+                                    : null,
                           ),
                           
                           // 右矢印（次のカテゴリ）
@@ -629,7 +675,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                             icon: Icons.arrow_forward_ios,
                             onPressed: _currentPageIndex < categories.length - 1
                                 ? () => _navigateToCategory(_currentPageIndex + 1)
-                                : null,
+                                : (categories.length == 1 && categories.first.id == 'default_all')
+                                    ? () => _showCategoryAdditionGuidance()
+                                    : null,
                           ),
                           
                           // 趣味追加
@@ -736,6 +784,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   /// カテゴリー選択ドロップダウンを表示
   void _showCategoryDropdown(BuildContext context) {
     final categories = ref.read(categoryListProvider);
+    
+    // カテゴリーが「すべて」のみの場合は設定画面への誘導を表示
+    if (categories.length == 1 && categories.first.id == 'default_all') {
+      _showCategoryAdditionGuidance();
+      return;
+    }
     
     showModalBottomSheet(
       context: context,
@@ -1195,111 +1249,117 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   }
 
   Widget _buildEmptyState([Category? category]) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(40, 40, 40, 140), // 下部にツールバー分の余白を追加
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min, // コンテンツサイズに合わせる
-          children: [
-            const SizedBox(height: 20), // 上部余白を調整
-            
-            // メインメッセージ
-            Text(
-              category?.id == 'default_all' 
-                  ? 'あなたの趣味を\n記録してみませんか？'
-                  : '「${category?.name}」に\n趣味を追加しましょう',
-              style: const TextStyle(
-                fontSize: 20, // サイズを小さく
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-                height: 1.3,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            
-            const SizedBox(height: 12), // 間隔を短く
-            
-            // サブメッセージ
-            Text(
-              category?.id == 'default_all'
-                  ? '趣味を追加して、活動記録を\n写真やメモで残しましょう'
-                  : 'このカテゴリーにはまだ\n趣味が登録されていません',
-              style: TextStyle(
-                fontSize: 14, // サイズを小さく
-                color: Colors.grey[600],
-                height: 1.4, // 行間を狭く
-              ),
-              textAlign: TextAlign.center,
-            ),
-            
-            const SizedBox(height: 30), // 間隔を短く
-            
-            // 行動誘導ボタン
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const AddHobbyScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: Text(
-                category?.id == 'default_all' 
-                    ? '最初の趣味を追加'
-                    : '趣味を追加',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF009977),
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                elevation: 2,
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // 機能紹介
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[200]!),
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(40, 0, 40, 140), // ツールバー分の下部余白
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - 140, // ツールバー分を除く
               ),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildFeatureItem(
-                    icon: Icons.photo_camera,
-                    title: '写真で記録',
-                    description: 'アイコンやメモに写真を添付',
+                  // メインメッセージ
+                  Text(
+                    category?.id == 'default_all' 
+                        ? 'あなたの趣味を\n記録してみませんか？'
+                        : '「${category?.name}」に\n趣味を追加しましょう',
+                    style: const TextStyle(
+                      fontSize: 18, // さらに小さく
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      height: 1.3,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
-                  _buildFeatureItem(
-                    icon: Icons.edit_note,
-                    title: 'メモを残す',
-                    description: '活動の記録や感想を保存',
+                  
+                  const SizedBox(height: 8), // 間隔をさらに短く
+                  
+                  // サブメッセージ
+                  Text(
+                    category?.id == 'default_all'
+                        ? '趣味を追加して、活動記録を\n写真やメモで残しましょう'
+                        : 'このカテゴリーにはまだ\n趣味が登録されていません',
+                    style: TextStyle(
+                      fontSize: 13, // サイズをさらに小さく
+                      color: Colors.grey[600],
+                      height: 1.3, // 行間をさらに狭く
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
-                  _buildFeatureItem(
-                    icon: Icons.palette,
-                    title: 'カスタマイズ',
-                    description: '背景画像で自分らしく',
+                  
+                  const SizedBox(height: 20), // 間隔をさらに短く
+                  
+                  // 行動誘導ボタン
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AddHobbyScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    label: Text(
+                      category?.id == 'default_all' 
+                          ? '最初の趣味を追加'
+                          : '趣味を追加',
+                      style: const TextStyle(
+                        fontSize: 15, // ボタンのフォントサイズも小さく
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF009977),
+                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14), // パディングを小さく
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      elevation: 2,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16), // 間隔を短く
+                  
+                  // 機能紹介
+                  Container(
+                    padding: const EdgeInsets.all(16), // パディングを小さく
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12), // 角丸を小さく
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildFeatureItem(
+                          icon: Icons.photo_camera,
+                          title: '写真で記録',
+                          description: 'アイコンやメモに写真を添付',
+                        ),
+                        const SizedBox(height: 12), // 間隔を短く
+                        _buildFeatureItem(
+                          icon: Icons.edit_note,
+                          title: 'メモを残す',
+                          description: '活動の記録や感想を保存',
+                        ),
+                        const SizedBox(height: 12), // 間隔を短く
+                        _buildFeatureItem(
+                          icon: Icons.palette,
+                          title: 'カスタマイズ',
+                          description: '背景画像で自分らしく',
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

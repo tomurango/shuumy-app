@@ -412,7 +412,17 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
               size: 28,
             ),
             const SizedBox(width: 12),
-            const Text('カテゴリーを削除'),
+            Expanded(
+              child: Text(
+                'カテゴリーを削除',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: Column(
