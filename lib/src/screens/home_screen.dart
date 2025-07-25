@@ -9,9 +9,11 @@ import '../models/hobby.dart';
 import '../models/category.dart';
 import '../providers/hobby_list_provider.dart';
 import '../providers/category_provider.dart';
+import '../providers/activity_record_provider.dart';
 import '../services/background_image_service.dart';
 import '../services/category_service.dart';
 import '../services/memo_service.dart';
+import '../services/activity_record_service.dart';
 import 'add_hobby_screen.dart';
 import 'edit_hobby_screen.dart';
 import 'detail_hobby_screen.dart';
@@ -33,7 +35,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   bool _isActivityRecordMode = false;
   bool _showCalendarContent = false; // カレンダーコンテンツの表示制御
   bool _hideHobbyCards = false; // 趣味カードの非表示制御
-  bool _showToolbar = true; // ツールバーの表示制御
+ // ツールバーの表示制御
   late AnimationController _shakeController;
   late AnimationController _transitionController;
   late AnimationController _toolbarController;
@@ -57,6 +59,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+    
+    // ツールバーの初期状態を設定（値を1.0に設定して画面に表示）
+    _toolbarController.value = 1.0;
   }
 
   ScrollController _getScrollController(String categoryId) {
@@ -785,22 +790,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         ),
                       ),
                       
+                      // スペーサー（期間選択コントローラーを右寄せするため）
+                      if (_isActivityRecordMode)
+                        Expanded(
+                          child: Container(), // 空のスペーサー
+                        ),
+                      
+                      // 活動記録モード時の期間選択コントローラー
+                      if (_isActivityRecordMode) ...[
+                        _buildPeriodSelectorHeader(),
+                      ],
+                      
                       // 隠し操作エリア（ダブルタップで背景表示モード）
-                      Expanded(
-                        child: GestureDetector(
-                          onDoubleTap: () async {
-                            // 背景が設定されている場合のみ動作
-                            final backgroundImage = await _getCurrentBackgroundImage();
-                            if (backgroundImage != null) {
-                              _toggleBackgroundViewMode();
-                            }
-                          },
-                          child: Container(
-                            height: 44, // カテゴリ名コンテナと同じ高さ
-                            color: Colors.transparent,
+                      if (!_isActivityRecordMode)
+                        Expanded(
+                          child: GestureDetector(
+                            onDoubleTap: () async {
+                              // 背景が設定されている場合のみ動作
+                              final backgroundImage = await _getCurrentBackgroundImage();
+                              if (backgroundImage != null) {
+                                _toggleBackgroundViewMode();
+                              }
+                            },
+                            child: Container(
+                              height: 44, // カテゴリ名コンテナと同じ高さ
+                              color: Colors.transparent,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -1727,55 +1744,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         ? categories[_currentPageIndex] 
         : null;
     
+    // 活動記録のカテゴリIDを設定
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (currentCategory != null) {
+        ref.read(activityRecordProvider.notifier).changeCategoryId(currentCategory.id);
+      }
+    });
+    
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         
-        // カレンダーカード（プロトタイプ）
+        // カレンダー表示カード
         Container(
-          height: 150,
-          margin: const EdgeInsets.only(bottom: 16), // 趣味カードと同じ間隔
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.calendar_month,
-                    size: 36,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'カレンダー表示\n（プロトタイプ）',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-        // 活動一覧カード（プロトタイプ）
-        Container(
-          height: 150,
-          margin: const EdgeInsets.only(bottom: 16), // 趣味カードと同じ間隔
-          padding: const EdgeInsets.all(20),
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -1787,29 +1771,1014 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               ),
             ],
           ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.list_alt,
-                  size: 36,
-                  color: Colors.grey,
+          child: _buildActivityCalendarCard(),
+        ),
+        
+        // 統計情報カード
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: _buildActivityStatisticsCard(),
+        ),
+        
+        // メモ一覧カード
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: _buildRecentMemosCard(),
+        ),
+      ],
+    );
+  }
+  
+  /// ヘッダー用の簡潔な期間選択を構築
+  Widget _buildPeriodSelectorHeader() {
+    final periodType = ref.watch(activityPeriodTypeProvider);
+    final periodInfo = ref.watch(activityPeriodInfoProvider);
+    
+    return GestureDetector(
+      // 左右フリック操作で期間移動
+      onPanEnd: (details) {
+        const sensitivity = 50.0; // フリック感度
+        
+        // 横フリック: 期間移動
+        if (details.velocity.pixelsPerSecond.dx.abs() > sensitivity) {
+          if (details.velocity.pixelsPerSecond.dx > sensitivity) {
+            // 右フリック: 前の期間
+            ref.read(activityRecordProvider.notifier).goToPreviousPeriod();
+          } else if (details.velocity.pixelsPerSecond.dx < -sensitivity) {
+            // 左フリック: 次の期間
+            ref.read(activityRecordProvider.notifier).goToNextPeriod();
+          }
+        }
+      },
+      child: Material(
+        elevation: 2.0, // カテゴリカードと同じelevation
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(20), // カテゴリカードと同じ角丸
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          // カテゴリカードと同じサイズに調整
+          height: 44, // カテゴリカードと同じ高さ
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end, // 右寄せに変更
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 前の期間ボタン
+              GestureDetector(
+                onTap: () {
+                  ref.read(activityRecordProvider.notifier).goToPreviousPeriod();
+                },
+                child: Icon(
+                  Icons.chevron_left,
+                  color: Colors.grey[600],
+                  size: 18,
                 ),
-                SizedBox(height: 8),
-                Text(
-                  '活動一覧\n（プロトタイプ）',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // 期間タイプアイコン + 期間表示
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 期間タイプアイコン
+                    Icon(
+                      _getPeriodTypeIcon(periodType),
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    // 現在の期間
+                    Flexible(
+                      child: Text(
+                        periodInfo.displayTitle,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // 次の期間ボタン
+              Consumer(
+                builder: (context, ref, child) {
+                  final currentPeriod = ref.watch(activityPeriodInfoProvider);
+                  final nextPeriod = ActivityRecordService.getNextPeriodInfo(currentPeriod);
+                  final canGoNext = !nextPeriod.startDate.isAfter(DateTime.now());
+                  
+                  return GestureDetector(
+                    onTap: canGoNext ? () {
+                      ref.read(activityRecordProvider.notifier).goToNextPeriod();
+                    } : null,
+                    child: Icon(
+                      Icons.chevron_right,
+                      color: canGoNext ? Colors.grey[600] : Colors.grey[300],
+                      size: 18,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  /// 期間表示を短縮形式で取得
+  String _getShortPeriodDisplay(String fullDisplay) {
+    // 「2025年1月」→「1月」
+    if (fullDisplay.contains('年') && fullDisplay.contains('月')) {
+      final match = RegExp(r'(\d+)月').firstMatch(fullDisplay);
+      if (match != null) {
+        return '${match.group(1)}月';
+      }
+    }
+    // 「1/20 - 1/26」→「1/20-26」
+    if (fullDisplay.contains(' - ')) {
+      return fullDisplay.replaceAll(' - ', '-').replaceAll('/', '/');
+    }
+    // 「2025年」→「2025」
+    if (fullDisplay.contains('年')) {
+      return fullDisplay.replaceAll('年', '');
+    }
+    return fullDisplay;
+  }
+  
+  /// 期間タイプ選択ボトムシートを表示
+  void _showPeriodTypeSelector() {
+    final currentPeriodType = ref.read(activityPeriodTypeProvider);
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ハンドルバー
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                height: 4,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              // タイトル
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '期間タイプを選択',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // 期間タイプ選択肢
+              ...PeriodType.values.map((type) {
+                final isSelected = type == currentPeriodType;
+                return ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                          : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _getPeriodTypeIcon(type),
+                      color: isSelected 
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey[600],
+                      size: 20,
+                    ),
                   ),
+                  title: Text(
+                    type.displayName,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      color: isSelected 
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.black87,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _getPeriodTypeDescription(type),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? Icon(
+                          Icons.check_circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        )
+                      : null,
+                  onTap: () {
+                    ref.read(activityRecordProvider.notifier).changePeriodType(type);
+                    Navigator.pop(context);
+                  },
+                );
+              }).toList(),
+              
+              // 下部の余白
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  /// 期間タイプのアイコンを取得
+  IconData _getPeriodTypeIcon(PeriodType type) {
+    switch (type) {
+      case PeriodType.weekly:
+        return Icons.view_week;
+      case PeriodType.monthly:
+        return Icons.calendar_view_month;
+      case PeriodType.yearly:
+        return Icons.calendar_month;
+    }
+  }
+  
+  /// 期間タイプの説明文を取得
+  String _getPeriodTypeDescription(PeriodType type) {
+    switch (type) {
+      case PeriodType.weekly:
+        return '1週間の活動を表示';
+      case PeriodType.monthly:
+        return '1ヶ月の活動を表示';
+      case PeriodType.yearly:
+        return '1年間の活動を表示';
+    }
+  }
+  
+  /// 活動統計カードを構築
+  Widget _buildActivityStatisticsCard() {
+    final statisticsAsync = ref.watch(activityRecordProvider);
+    
+    return statisticsAsync.when(
+      data: (statistics) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '統計情報',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // サマリー統計
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.edit_note,
+                  title: 'メモ数',
+                  value: '${statistics.totalMemos}件',
+                  color: Colors.blue,
                 ),
-              ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.calendar_today,
+                  title: '活動日数',
+                  value: '${statistics.totalActiveDays}日',
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
+          
+          if (statistics.hobbyActivityCount.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              '趣味別活動',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...statistics.hobbyActivityCount.entries.take(5).map((entry) =>
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    // 趣味の色インジケーター
+                    Container(
+                      width: 12,
+                      height: 12,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: ActivityRecordService.getHobbyColor(entry.key),
+                        borderRadius: BorderRadius.circular(2),
+                        border: Border.all(
+                          color: ActivityRecordService.getHobbyColor(entry.key).withOpacity(0.3),
+                          width: 0.5,
+                        ),
+                      ),
+                    ),
+                    // 趣味名
+                    Expanded(
+                      child: Text(
+                        entry.key,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    // 活動回数
+                    Text(
+                      '${entry.value}件',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, _) => Center(
+        child: Text(
+          'データの読み込みに失敗しました',
+          style: TextStyle(
+            color: Colors.red[600],
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+  
+  /// 統計カードを構築
+  Widget _buildStatCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: color,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: color.withOpacity(0.8),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// 活動カレンダーカードを構築
+  Widget _buildActivityCalendarCard() {
+    final periodType = ref.watch(activityPeriodTypeProvider);
+    final statisticsAsync = ref.watch(activityRecordProvider);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.calendar_today,
+              color: Theme.of(context).colorScheme.primary,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '活動記録',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // 期間タイプに応じたカレンダー表示
+        statisticsAsync.when(
+          data: (statistics) {
+            switch (periodType) {
+              case PeriodType.weekly:
+                return _buildWeeklyCalendar(statistics);
+              case PeriodType.monthly:
+                return _buildMonthlyCalendar(statistics);
+              case PeriodType.yearly:
+                return _buildYearlyCalendar(statistics);
+            }
+          },
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (error, _) => Center(
+            child: Text(
+              'カレンダーの読み込みに失敗しました',
+              style: TextStyle(
+                color: Colors.red[600],
+                fontSize: 12,
+              ),
             ),
           ),
         ),
       ],
+    );
+  }
+  
+  /// 週間カレンダーを構築
+  Widget _buildWeeklyCalendar(ActivityStatistics statistics) {
+    final periodInfo = ref.watch(activityPeriodInfoProvider);
+    final weekDays = ['月', '火', '水', '木', '金', '土', '日'];
+    
+    return Column(
+      children: [
+        // 曜日ヘッダー
+        Row(
+          children: weekDays.map((day) => Expanded(
+            child: Text(
+              day,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+          )).toList(),
+        ),
+        
+        const SizedBox(height: 8),
+        
+        // 週の日付
+        Row(
+          children: List.generate(7, (index) {
+            final date = periodInfo.startDate.add(Duration(days: index));
+            final hasActivity = ActivityRecordService.hasActivityOnDate(statistics.dailyCount, date);
+            final hobbiesOnDate = ActivityRecordService.getHobbiesOnDate(statistics.dailyHobbies, date);
+            final hobbyColor = hasActivity 
+                ? ActivityRecordService.getMixedHobbyColor(hobbiesOnDate)
+                : Colors.grey[300]!;
+            
+            return Expanded(
+              child: Container(
+                height: 36,
+                margin: const EdgeInsets.all(1),
+                decoration: BoxDecoration(
+                  color: hasActivity 
+                      ? hobbyColor.withOpacity(0.2)
+                      : Colors.grey[50],
+                  borderRadius: BorderRadius.circular(6),
+                  border: hasActivity 
+                      ? Border.all(color: hobbyColor, width: 1.5)
+                      : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${date.day}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: hasActivity ? FontWeight.bold : FontWeight.normal,
+                        color: hasActivity 
+                            ? hobbyColor.withOpacity(0.8)
+                            : Colors.grey[600],
+                      ),
+                    ),
+                    if (hasActivity && hobbiesOnDate.length > 1)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: hobbiesOnDate.take(3).map((hobby) => Container(
+                          width: 3,
+                          height: 3,
+                          margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                          decoration: BoxDecoration(
+                            color: ActivityRecordService.getHobbyColor(hobby),
+                            shape: BoxShape.circle,
+                          ),
+                        )).toList(),
+                      )
+                    else if (hasActivity)
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: hobbyColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+        
+        // 色凡例を表示（趣味がある場合のみ）
+        if (statistics.hobbyActivityCount.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildColorLegend(statistics),
+        ],
+      ],
+    );
+  }
+  
+  /// 月間カレンダーを構築
+  Widget _buildMonthlyCalendar(ActivityStatistics statistics) {
+    final periodInfo = ref.watch(activityPeriodInfoProvider);
+    final firstDayOfMonth = DateTime(periodInfo.startDate.year, periodInfo.startDate.month, 1);
+    final lastDayOfMonth = DateTime(periodInfo.startDate.year, periodInfo.startDate.month + 1, 0);
+    final startOfCalendar = firstDayOfMonth.subtract(Duration(days: firstDayOfMonth.weekday - 1));
+    
+    final weekDays = ['月', '火', '水', '木', '金', '土', '日'];
+    
+    return Column(
+      children: [
+        // 曜日ヘッダー
+        Row(
+          children: weekDays.map((day) => Expanded(
+            child: Text(
+              day,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+          )).toList(),
+        ),
+        
+        const SizedBox(height: 8),
+        
+        // カレンダーグリッド（最大6週間）
+        ...List.generate(6, (weekIndex) {
+          final weekStart = startOfCalendar.add(Duration(days: weekIndex * 7));
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          
+          // この週に当月の日付が含まれているかチェック
+          if (weekStart.isAfter(lastDayOfMonth)) {
+            return const SizedBox.shrink();
+          }
+          
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: List.generate(7, (dayIndex) {
+                final date = weekStart.add(Duration(days: dayIndex));
+                final isCurrentMonth = date.month == firstDayOfMonth.month;
+                final hasActivity = ActivityRecordService.hasActivityOnDate(statistics.dailyCount, date);
+                final hobbiesOnDate = ActivityRecordService.getHobbiesOnDate(statistics.dailyHobbies, date);
+                final hobbyColor = hasActivity 
+                    ? ActivityRecordService.getMixedHobbyColor(hobbiesOnDate)
+                    : Colors.grey[300]!;
+                
+                return Expanded(
+                  child: Container(
+                    height: 28,
+                    margin: const EdgeInsets.all(1),
+                    decoration: BoxDecoration(
+                      color: !isCurrentMonth 
+                          ? Colors.transparent
+                          : hasActivity 
+                              ? hobbyColor.withOpacity(0.2)
+                              : Colors.grey[50],
+                      borderRadius: BorderRadius.circular(4),
+                      border: hasActivity && isCurrentMonth
+                          ? Border.all(color: hobbyColor, width: 1)
+                          : null,
+                    ),
+                    child: isCurrentMonth ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${date.day}',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: hasActivity ? FontWeight.bold : FontWeight.normal,
+                              color: hasActivity 
+                                  ? hobbyColor.withOpacity(0.8)
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                          if (hasActivity && hobbiesOnDate.length > 1)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: hobbiesOnDate.take(2).map((hobby) => Container(
+                                width: 2,
+                                height: 2,
+                                margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                                decoration: BoxDecoration(
+                                  color: ActivityRecordService.getHobbyColor(hobby),
+                                  shape: BoxShape.circle,
+                                ),
+                              )).toList(),
+                            )
+                          else if (hasActivity)
+                            Container(
+                              width: 6,
+                              height: 1.5,
+                              decoration: BoxDecoration(
+                                color: hobbyColor,
+                                borderRadius: BorderRadius.circular(1),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ) : null,
+                  ),
+                );
+              }),
+            ),
+          );
+        }),
+        
+        // 色凡例を表示（趣味がある場合のみ）
+        if (statistics.hobbyActivityCount.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildColorLegend(statistics),
+        ],
+      ],
+    );
+  }
+  
+  /// 年間カレンダーを構築（簡易版）
+  Widget _buildYearlyCalendar(ActivityStatistics statistics) {
+    final periodInfo = ref.watch(activityPeriodInfoProvider);
+    final year = periodInfo.startDate.year;
+    
+    return Column(
+      children: [
+        // 月別サマリー
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            childAspectRatio: 1.2,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemCount: 12,
+          itemBuilder: (context, index) {
+            final month = index + 1;
+            final monthStart = DateTime(year, month, 1);
+            final monthEnd = DateTime(year, month + 1, 0);
+            
+            // その月のアクティビティ数と趣味を計算
+            final monthActivityCount = statistics.dailyCount.entries
+                .where((entry) => 
+                    entry.key.year == year && 
+                    entry.key.month == month)
+                .fold(0, (sum, entry) => sum + entry.value);
+            
+            final monthHobbies = statistics.dailyHobbies.entries
+                .where((entry) => 
+                    entry.key.year == year && 
+                    entry.key.month == month)
+                .expand((entry) => entry.value)
+                .toSet()
+                .toList();
+            
+            final hasActivity = monthActivityCount > 0;
+            final monthColor = hasActivity 
+                ? ActivityRecordService.getMixedHobbyColor(monthHobbies)
+                : Colors.grey[300]!;
+            
+            return Container(
+              decoration: BoxDecoration(
+                color: hasActivity 
+                    ? monthColor.withOpacity(0.1)
+                    : Colors.grey[50],
+                borderRadius: BorderRadius.circular(6),
+                border: hasActivity 
+                    ? Border.all(color: monthColor, width: 1)
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${month}月',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: hasActivity ? FontWeight.bold : FontWeight.normal,
+                      color: hasActivity 
+                          ? monthColor.withOpacity(0.8)
+                          : Colors.grey[600],
+                    ),
+                  ),
+                  if (hasActivity)
+                    Text(
+                      '$monthActivityCount件',
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: monthColor,
+                      ),
+                    ),
+                  if (hasActivity && monthHobbies.length > 1)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: monthHobbies.take(3).map((hobby) => Container(
+                        width: 3,
+                        height: 3,
+                        margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                        decoration: BoxDecoration(
+                          color: ActivityRecordService.getHobbyColor(hobby),
+                          shape: BoxShape.circle,
+                        ),
+                      )).toList(),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+        
+        // 色凡例を表示（趣味がある場合のみ）
+        if (statistics.hobbyActivityCount.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildColorLegend(statistics),
+        ],
+      ],
+    );
+  }
+  
+  /// 色凡例を構築
+  Widget _buildColorLegend(ActivityStatistics statistics) {
+    final sortedHobbies = statistics.hobbyActivityCount.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '色の説明',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: sortedHobbies.map((entry) {
+            final hobbyColor = ActivityRecordService.getHobbyColor(entry.key);
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: hobbyColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: hobbyColor.withOpacity(0.3),
+                  width: 0.8,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: hobbyColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    entry.key,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: hobbyColor.withOpacity(0.8),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+  
+  /// 最近のメモカードを構築
+  Widget _buildRecentMemosCard() {
+    final statisticsAsync = ref.watch(activityRecordProvider);
+    final periodType = ref.watch(activityPeriodTypeProvider);
+    
+    // 期間タイプに応じたタイトル
+    String getPeriodTitle() {
+      switch (periodType) {
+        case PeriodType.weekly:
+          return 'この週のメモ';
+        case PeriodType.monthly:
+          return 'この月のメモ';
+        case PeriodType.yearly:
+          return 'この年のメモ';
+      }
+    }
+    
+    return statisticsAsync.when(
+      data: (statistics) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            getPeriodTitle(),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          if (statistics.recentMemos.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  'この期間にはメモがありません',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...statistics.recentMemos.take(5).map((memo) =>
+              Container(
+                width: double.infinity, // 横幅を最大に設定
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      memo.content,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${memo.createdAt.month}/${memo.createdAt.day} ${memo.createdAt.hour}:${memo.createdAt.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, _) => Center(
+        child: Text(
+          'メモの読み込みに失敗しました',
+          style: TextStyle(
+            color: Colors.red[600],
+            fontSize: 12,
+          ),
+        ),
+      ),
     );
   }
 
@@ -1895,14 +2864,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             : null,
       ),
       
-      // 閉じる
+      // 期間選択ボトムシートボタン（強調）
+      _buildToolbarButton(
+        icon: Icons.calendar_today,
+        onPressed: () => _showPeriodSelectionBottomSheet(),
+        isAccent: true,
+        isPill: true,
+      ),
+      
+      // 戻るボタン（中央配置）
       _buildToolbarButton(
         icon: Icons.close,
         onPressed: _toggleActivityRecordMode,
-        isAccent: true,
       ),
       
-      // 設定
+      // 設定ボタン
       _buildToolbarButton(
         icon: Icons.settings,
         onPressed: () async {
@@ -1919,5 +2895,415 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         },
       ),
     ];
+  }
+
+  /// 今日の日付をフォーマット
+  String _formatTodayDate() {
+    final today = DateTime.now();
+    final weekdays = ['月', '火', '水', '木', '金', '土', '日'];
+    final weekday = weekdays[today.weekday - 1];
+    
+    return '${today.year}年${today.month}月${today.day}日（$weekday）';
+  }
+
+  /// 期間選択ボトムシートを表示
+  void _showPeriodSelectionBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setBottomSheetState) {
+            final currentPeriodType = ref.read(activityPeriodTypeProvider);
+            final currentPeriodInfo = ref.read(activityPeriodInfoProvider);
+            final currentDate = ref.read(activityBaseDateProvider);
+            
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.8,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ハンドルバー
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    height: 4,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  
+                  // タイトルと今日の日付
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '期間選択',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '今日の日付: ${_formatTodayDate()}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // 期間タイプ選択タブ
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: PeriodType.values.map((type) {
+                        final isSelected = type == currentPeriodType;
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              ref.read(activityRecordProvider.notifier).changePeriodType(type);
+                              setBottomSheetState(() {});
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected 
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _getPeriodTypeIcon(type),
+                                    color: isSelected 
+                                        ? Colors.white 
+                                        : Colors.grey[600],
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    type.displayName,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected 
+                                          ? Colors.white 
+                                          : Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // 期間選択リスト
+                  Flexible(
+                    child: _buildPeriodSelectionList(currentPeriodType, currentDate),
+                  ),
+                  
+                  // 今日に戻るボタン
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          ref.read(activityBaseDateProvider.notifier).state = DateTime.now();
+                          ref.read(activityRecordProvider.notifier).reload();
+                          Navigator.pop(context);
+                        },
+                        icon: const Icon(Icons.today),
+                        label: const Text('今日に戻る'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// 期間選択リストを構築
+  Widget _buildPeriodSelectionList(PeriodType periodType, DateTime currentDate) {
+    switch (periodType) {
+      case PeriodType.yearly:
+        return _buildYearSelectionList(currentDate);
+      case PeriodType.monthly:
+        return _buildMonthSelectionList(currentDate);
+      case PeriodType.weekly:
+        return _buildWeekSelectionList(currentDate);
+    }
+  }
+
+  /// 年選択リストを構築
+  Widget _buildYearSelectionList(DateTime currentDate) {
+    final todayYear = DateTime.now().year; // 今日の年を基準
+    final currentYear = currentDate.year;
+    // 今日の年から過去10年間のみ表示
+    final years = List.generate(10, (index) => todayYear - index);
+    
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: years.length,
+      itemBuilder: (context, index) {
+        final year = years[index];
+        final isSelected = year == currentYear;
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.calendar_view_month,
+                color: isSelected ? Colors.white : Colors.grey[600],
+                size: 20,
+              ),
+            ),
+            title: Text(
+              '${year}年',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected 
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.black87,
+              ),
+            ),
+            trailing: isSelected 
+                ? Icon(
+                    Icons.check_circle,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 24,
+                  )
+                : null,
+            onTap: () {
+              final newDate = DateTime(year, currentDate.month, currentDate.day);
+              ref.read(activityBaseDateProvider.notifier).state = newDate;
+              ref.read(activityRecordProvider.notifier).reload();
+              Navigator.pop(context);
+            },
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            tileColor: isSelected 
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                : null,
+          ),
+        );
+      },
+    );
+  }
+
+  /// 月選択リストを構築
+  Widget _buildMonthSelectionList(DateTime currentDate) {
+    final today = DateTime.now();
+    final currentMonth = currentDate.month;
+    final currentYear = currentDate.year;
+    
+    // 今日を含む月を最上位にして、過去24ヶ月を時系列逆順で表示
+    final months = <DateTime>[];
+    
+    // 今日から過去24ヶ月生成（今日から過去へ）
+    for (int i = 0; i <= 24; i++) {
+      final monthDate = DateTime(today.year, today.month - i, 1);
+      months.add(monthDate);
+    }
+    
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: months.length,
+      itemBuilder: (context, index) {
+        final monthDate = months[index];
+        final isSelected = monthDate.month == currentMonth && monthDate.year == currentYear;
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.calendar_view_month,
+                color: isSelected ? Colors.white : Colors.grey[600],
+                size: 20,
+              ),
+            ),
+            title: Text(
+              '${monthDate.year}年${monthDate.month}月',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected 
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.black87,
+              ),
+            ),
+            trailing: isSelected 
+                ? Icon(
+                    Icons.check_circle,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 24,
+                  )
+                : null,
+            onTap: () {
+              final newDate = DateTime(monthDate.year, monthDate.month, currentDate.day);
+              ref.read(activityBaseDateProvider.notifier).state = newDate;
+              ref.read(activityRecordProvider.notifier).reload();
+              Navigator.pop(context);
+            },
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            tileColor: isSelected 
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                : null,
+          ),
+        );
+      },
+    );
+  }
+
+  /// 週選択リストを構築
+  Widget _buildWeekSelectionList(DateTime currentDate) {
+    final weeks = <DateTime>[];
+    final now = DateTime.now();
+    
+    // 今日を含む週を最上位にして、過去16週間を時系列逆順で表示
+    for (int i = 0; i <= 16; i++) {
+      final weekStart = now.subtract(Duration(days: i * 7));
+      final mondayOfWeek = weekStart.subtract(Duration(days: weekStart.weekday - 1));
+      weeks.add(mondayOfWeek);
+    }
+    
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: weeks.length,
+      itemBuilder: (context, index) {
+        final weekStart = weeks[index];
+        final weekEnd = weekStart.add(const Duration(days: 6));
+        final currentWeekStart = currentDate.subtract(Duration(days: currentDate.weekday - 1));
+        final isSelected = weekStart.year == currentWeekStart.year &&
+                          weekStart.month == currentWeekStart.month &&
+                          weekStart.day == currentWeekStart.day;
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.view_week,
+                color: isSelected ? Colors.white : Colors.grey[600],
+                size: 20,
+              ),
+            ),
+            title: Text(
+              '${weekStart.month}/${weekStart.day} - ${weekEnd.month}/${weekEnd.day}',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected 
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.black87,
+              ),
+            ),
+            subtitle: Text(
+              '${weekStart.year}年',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+            trailing: isSelected 
+                ? Icon(
+                    Icons.check_circle,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 24,
+                  )
+                : null,
+            onTap: () {
+              ref.read(activityBaseDateProvider.notifier).state = weekStart;
+              ref.read(activityRecordProvider.notifier).reload();
+              Navigator.pop(context);
+            },
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            tileColor: isSelected 
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                : null,
+          ),
+        );
+      },
+    );
   }
 }
