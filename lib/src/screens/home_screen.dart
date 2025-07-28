@@ -139,9 +139,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   double _calculateScrollAmount() {
     final screenHeight = MediaQuery.of(context).size.height;
     
-    // 画面全体の高さ + 余裕分を空白の高さとして使用
-    // これにより、趣味カードが確実に画面外に押し出される
-    return screenHeight + 200.0; // 画面全体 + 余裕分
+    // 画面全体の高さ + 大きな余裕分を空白の高さとして使用
+    // 活動記録画面のコンテンツ（3つのカード + マージン + ツールバー）が
+    // 確実に完全表示されるように十分な余裕分を確保
+    return screenHeight + 500.0; // 画面全体 + 大きな余裕分
   }
 
   /// カレンダーコンテンツの高さを計算
