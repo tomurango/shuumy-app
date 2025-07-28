@@ -2378,18 +2378,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   color: isFutureDate
                       ? Colors.blue[50]
                       : !isDateAvailable
-                          ? Colors.grey[200]
-                          : hasActivity 
-                              ? hobbyColor.withOpacity(0.2)
-                              : Colors.grey[50],
+                          ? Colors.grey[100]
+                          : Colors.white,
                   borderRadius: BorderRadius.circular(6),
                   border: isFutureDate
                       ? Border.all(color: Colors.blue[300]!, width: 2.0)
-                      : hasActivity && isDateAvailable
-                          ? Border.all(color: hobbyColor, width: 1.5)
-                          : !isDateAvailable
-                              ? Border.all(color: Colors.grey[400]!, width: 1.5)
-                              : null,
+                      : !isDateAvailable
+                          ? Border.all(color: Colors.grey[300]!, width: 1.0)
+                          : null,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2398,37 +2394,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       '${date.day}',
                       style: TextStyle(
                         fontSize: 10,
-                        fontWeight: hasActivity && isDateAvailable && !isFutureDate ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: FontWeight.normal,
                         fontStyle: isFutureDate ? FontStyle.italic : FontStyle.normal,
                         color: isFutureDate
                             ? Colors.blue[600]
                             : !isDateAvailable
                                 ? Colors.grey[400]
-                                : hasActivity 
-                                    ? hobbyColor.withOpacity(0.8)
-                                    : Colors.grey[600],
+                                : Colors.grey[600],
                       ),
                     ),
                     if (hasActivity && hobbiesOnDate.length > 1 && isDateAvailable && !isFutureDate)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: hobbiesOnDate.take(3).map((hobby) => Container(
-                          width: 3,
-                          height: 3,
-                          margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                        children: hobbiesOnDate.take(5).map((hobby) => Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
                           decoration: BoxDecoration(
                             color: ActivityRecordService.getHobbyColor(hobby),
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                         )).toList(),
                       )
                     else if (hasActivity && isDateAvailable && !isFutureDate)
                       Container(
-                        width: 4,
-                        height: 4,
+                        width: 8,
+                        height: 8,
                         decoration: BoxDecoration(
                           color: hobbyColor,
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 2,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
                       ),
                   ],
@@ -2462,18 +2470,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   color: isFutureDate
                       ? Colors.blue[50]
                       : !isDateAvailable
-                          ? Colors.grey[200]
-                          : hasActivity 
-                              ? hobbyColor.withOpacity(0.2)
-                              : Colors.grey[50],
+                          ? Colors.grey[100]
+                          : Colors.white,
                   borderRadius: BorderRadius.circular(6),
                   border: isFutureDate
                       ? Border.all(color: Colors.blue[300]!, width: 2.0)
-                      : hasActivity && isDateAvailable
-                          ? Border.all(color: hobbyColor, width: 1.5)
-                          : !isDateAvailable
-                              ? Border.all(color: Colors.grey[400]!, width: 1.5)
-                              : null,
+                      : !isDateAvailable
+                          ? Border.all(color: Colors.grey[300]!, width: 1.0)
+                          : null,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2482,37 +2486,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       '${date.day}',
                       style: TextStyle(
                         fontSize: 10,
-                        fontWeight: hasActivity && isDateAvailable && !isFutureDate ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: FontWeight.normal,
                         fontStyle: isFutureDate ? FontStyle.italic : FontStyle.normal,
                         color: isFutureDate
                             ? Colors.blue[600]
                             : !isDateAvailable
                                 ? Colors.grey[400]
-                                : hasActivity 
-                                    ? hobbyColor.withOpacity(0.8)
-                                    : Colors.grey[600],
+                                : Colors.grey[600],
                       ),
                     ),
                     if (hasActivity && hobbiesOnDate.length > 1 && isDateAvailable && !isFutureDate)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: hobbiesOnDate.take(3).map((hobby) => Container(
-                          width: 3,
-                          height: 3,
-                          margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                        children: hobbiesOnDate.take(5).map((hobby) => Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
                           decoration: BoxDecoration(
                             color: ActivityRecordService.getHobbyColor(hobby),
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                         )).toList(),
                       )
                     else if (hasActivity && isDateAvailable && !isFutureDate)
                       Container(
-                        width: 4,
-                        height: 4,
+                        width: 8,
+                        height: 8,
                         decoration: BoxDecoration(
                           color: hobbyColor,
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 2,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
                       ),
                   ],
@@ -2596,18 +2612,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           : isFutureDate
                               ? Colors.blue[50]
                               : !isDateAvailable
-                                  ? Colors.grey[200]
-                                  : hasActivity 
-                                      ? hobbyColor.withOpacity(0.2)
-                                      : Colors.grey[50],
+                                  ? Colors.grey[100]
+                                  : Colors.white,
                       borderRadius: BorderRadius.circular(4),
-                      border: isFutureDate && isCurrentMonth
-                          ? Border.all(color: Colors.blue[300]!, width: 1.5)
-                          : hasActivity && isCurrentMonth && isDateAvailable
-                              ? Border.all(color: hobbyColor, width: 1)
-                              : !isDateAvailable && isCurrentMonth
-                                  ? Border.all(color: Colors.grey[400]!, width: 1, style: BorderStyle.solid)
-                                  : null,
                     ),
                     child: isCurrentMonth ? Center(
                       child: Column(
@@ -2617,37 +2624,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                             '${date.day}',
                             style: TextStyle(
                               fontSize: 9,
-                              fontWeight: hasActivity && isDateAvailable && !isFutureDate ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: FontWeight.normal,
                               fontStyle: isFutureDate ? FontStyle.italic : FontStyle.normal,
                               color: isFutureDate
                                   ? Colors.blue[600]
                                   : !isDateAvailable
                                       ? Colors.grey[400]
-                                      : hasActivity 
-                                          ? hobbyColor.withOpacity(0.8)
-                                          : Colors.grey[600],
+                                      : Colors.grey[600],
                             ),
                           ),
                           if (hasActivity && hobbiesOnDate.length > 1 && isDateAvailable && !isFutureDate)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: hobbiesOnDate.take(2).map((hobby) => Container(
-                                width: 2,
-                                height: 2,
-                                margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                              children: hobbiesOnDate.take(5).map((hobby) => Container(
+                                width: 7,
+                                height: 7,
+                                margin: const EdgeInsets.symmetric(horizontal: 1),
                                 decoration: BoxDecoration(
                                   color: ActivityRecordService.getHobbyColor(hobby),
-                                  shape: BoxShape.circle,
+                                  borderRadius: BorderRadius.circular(2.5),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
                               )).toList(),
                             )
                           else if (hasActivity && isDateAvailable && !isFutureDate)
                             Container(
-                              width: 6,
-                              height: 1.5,
+                              width: 7,
+                              height: 7,
                               decoration: BoxDecoration(
                                 color: hobbyColor,
-                                borderRadius: BorderRadius.circular(1),
+                                borderRadius: BorderRadius.circular(2.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                               ),
                             ),
                         ],
@@ -2752,18 +2771,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 color: isMonthFuture
                     ? Colors.blue[50]
                     : !isMonthAvailable
-                        ? Colors.grey[200]
-                        : hasActivity 
-                            ? monthColor.withOpacity(0.1)
-                            : Colors.grey[50],
+                        ? Colors.grey[100]
+                        : Colors.white,
                 borderRadius: BorderRadius.circular(6),
-                border: isMonthFuture
-                    ? Border.all(color: Colors.blue[300]!, width: 2.0)
-                    : !isMonthAvailable
-                        ? Border.all(color: Colors.grey[400]!, width: 1.5)
-                        : hasActivity
-                            ? Border.all(color: monthColor, width: 1)
-                            : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -2775,38 +2785,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         '${month}月',
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight: hasActivity && isMonthAvailable && !isMonthFuture ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: FontWeight.normal,
                           color: isMonthFuture
                               ? Colors.blue[700]
                               : !isMonthAvailable
                                   ? Colors.grey[400]
-                                  : hasActivity 
-                                      ? monthColor.withOpacity(0.8)
-                                      : Colors.grey[600],
+                                  : Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
-                  if (hasActivity && isMonthAvailable && !isMonthFuture)
-                    Text(
-                      '$monthActivityCount件',
-                      style: TextStyle(
-                        fontSize: 8,
-                        color: monthColor,
-                      ),
-                    ),
                   if (hasActivity && monthHobbies.length > 1 && isMonthAvailable && !isMonthFuture)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: monthHobbies.take(3).map((hobby) => Container(
-                        width: 3,
-                        height: 3,
-                        margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                      children: monthHobbies.take(5).map((hobby) => Container(
+                        width: 6,
+                        height: 6,
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
                         decoration: BoxDecoration(
                           color: ActivityRecordService.getHobbyColor(hobby),
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 1.5,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
                       )).toList(),
+                    )
+                  else if (hasActivity && isMonthAvailable && !isMonthFuture)
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: monthColor,
+                        borderRadius: BorderRadius.circular(2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 1.5,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
                     ),
                 ],
               ),
@@ -2848,30 +2871,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: hobbyColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: hobbyColor.withOpacity(0.3),
-                  width: 0.8,
+                  color: Colors.grey[300]!,
+                  width: 0.5,
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 8,
-                    height: 8,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
                       color: hobbyColor,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 1,
+                          offset: const Offset(0, 0.5),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     entry.key,
                     style: TextStyle(
-                      fontSize: 10,
-                      color: hobbyColor.withOpacity(0.8),
+                      fontSize: 11,
+                      color: Colors.grey[700],
                       fontWeight: FontWeight.w500,
                     ),
                   ),
