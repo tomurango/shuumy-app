@@ -6,7 +6,7 @@ import 'memo_service.dart';
 
 /// 期間選択の種類
 enum PeriodType {
-  weekly('週間'),
+  biweekly('2週間'),
   monthly('月間'),
   yearly('年間');
   
@@ -84,21 +84,27 @@ class ActivityRecordService {
     required String categoryId,
     required PeriodInfo periodInfo,
     required List<Hobby> hobbies,
+    bool isPremium = false,
   }) async {
     try {
       // カテゴリに属する趣味を取得
       final categoryHobbies = _filterHobbiesByCategory(hobbies, categoryId);
       
+      // 無料版の場合は期間制限を適用
+      final effectivePeriodInfo = isPremium ? periodInfo : _applyFreeTierLimit(periodInfo);
+      
       // 期間内の全メモを取得
       final allMemos = <HobbyMemo>[];
       for (final hobby in categoryHobbies) {
         final hobbyMemos = await MemoService.loadMemosForHobby(hobby.id);
-        final periodMemos = _filterMemosByPeriod(hobbyMemos, periodInfo);
+        final periodMemos = _filterMemosByPeriod(hobbyMemos, effectivePeriodInfo);
         allMemos.addAll(periodMemos);
       }
       
       // 統計情報を計算
-      return _calculateStatistics(allMemos, categoryHobbies);
+      final statistics = _calculateStatistics(allMemos, categoryHobbies);
+      
+      return statistics;
       
     } catch (e) {
       debugPrint('活動統計取得エラー: $e');
@@ -125,8 +131,10 @@ class ActivityRecordService {
   static List<HobbyMemo> _filterMemosByPeriod(List<HobbyMemo> memos, PeriodInfo periodInfo) {
     return memos.where((memo) {
       final memoDate = memo.createdAt;
-      return memoDate.isAfter(periodInfo.startDate.subtract(const Duration(days: 1))) &&
-             memoDate.isBefore(periodInfo.endDate.add(const Duration(days: 1)));
+      // 期間開始日以降かつ期間終了日以前かをチェック（境界値を含む）
+      final startCheck = !memoDate.isBefore(periodInfo.startDate);
+      final endCheck = !memoDate.isAfter(periodInfo.endDate);
+      return startCheck && endCheck;
     }).toList();
   }
   
@@ -181,8 +189,8 @@ class ActivityRecordService {
     final now = baseDate ?? DateTime.now();
     
     switch (periodType) {
-      case PeriodType.weekly:
-        return _getWeeklyPeriodInfo(now);
+      case PeriodType.biweekly:
+        return _getBiweeklyPeriodInfo(now);
       case PeriodType.monthly:
         return _getMonthlyPeriodInfo(now);
       case PeriodType.yearly:
@@ -190,25 +198,25 @@ class ActivityRecordService {
     }
   }
   
-  /// 週間期間情報を取得
-  static PeriodInfo _getWeeklyPeriodInfo(DateTime baseDate) {
-    // 週の開始を月曜日に設定
+  /// 2週間期間情報を取得
+  static PeriodInfo _getBiweeklyPeriodInfo(DateTime baseDate) {
+    // 2週間の開始を月曜日に設定
     final weekday = baseDate.weekday;
     final startOfWeek = baseDate.subtract(Duration(days: weekday - 1));
-    final endOfWeek = startOfWeek.add(const Duration(days: 6));
+    final endOfBiweek = startOfWeek.add(const Duration(days: 13)); // 2週間 = 14日間
     
     return PeriodInfo(
       startDate: DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day),
-      endDate: DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59),
-      periodType: PeriodType.weekly,
-      displayTitle: '${startOfWeek.year} ${startOfWeek.month}/${startOfWeek.day}-${endOfWeek.month}/${endOfWeek.day}',
+      endDate: DateTime(endOfBiweek.year, endOfBiweek.month, endOfBiweek.day, 23, 59, 59, 999),
+      periodType: PeriodType.biweekly,
+      displayTitle: '${startOfWeek.year} ${startOfWeek.month}/${startOfWeek.day}-${endOfBiweek.month}/${endOfBiweek.day}',
     );
   }
   
   /// 月間期間情報を取得
   static PeriodInfo _getMonthlyPeriodInfo(DateTime baseDate) {
     final startOfMonth = DateTime(baseDate.year, baseDate.month, 1);
-    final endOfMonth = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59);
+    final endOfMonth = DateTime(baseDate.year, baseDate.month + 1, 0, 23, 59, 59, 999);
     
     return PeriodInfo(
       startDate: startOfMonth,
@@ -221,7 +229,7 @@ class ActivityRecordService {
   /// 年間期間情報を取得
   static PeriodInfo _getYearlyPeriodInfo(DateTime baseDate) {
     final startOfYear = DateTime(baseDate.year, 1, 1);
-    final endOfYear = DateTime(baseDate.year, 12, 31, 23, 59, 59);
+    final endOfYear = DateTime(baseDate.year, 12, 31, 23, 59, 59, 999);
     
     return PeriodInfo(
       startDate: startOfYear,
@@ -234,9 +242,9 @@ class ActivityRecordService {
   /// 前の期間情報を取得
   static PeriodInfo getPreviousPeriodInfo(PeriodInfo currentPeriod) {
     switch (currentPeriod.periodType) {
-      case PeriodType.weekly:
-        final previousWeek = currentPeriod.startDate.subtract(const Duration(days: 7));
-        return _getWeeklyPeriodInfo(previousWeek);
+      case PeriodType.biweekly:
+        final previousBiweek = currentPeriod.startDate.subtract(const Duration(days: 14));
+        return _getBiweeklyPeriodInfo(previousBiweek);
       case PeriodType.monthly:
         final previousMonth = DateTime(currentPeriod.startDate.year, currentPeriod.startDate.month - 1, 1);
         return _getMonthlyPeriodInfo(previousMonth);
@@ -249,9 +257,9 @@ class ActivityRecordService {
   /// 次の期間情報を取得
   static PeriodInfo getNextPeriodInfo(PeriodInfo currentPeriod) {
     switch (currentPeriod.periodType) {
-      case PeriodType.weekly:
-        final nextWeek = currentPeriod.startDate.add(const Duration(days: 7));
-        return _getWeeklyPeriodInfo(nextWeek);
+      case PeriodType.biweekly:
+        final nextBiweek = currentPeriod.startDate.add(const Duration(days: 14));
+        return _getBiweeklyPeriodInfo(nextBiweek);
       case PeriodType.monthly:
         final nextMonth = DateTime(currentPeriod.startDate.year, currentPeriod.startDate.month + 1, 1);
         return _getMonthlyPeriodInfo(nextMonth);
@@ -301,4 +309,92 @@ class ActivityRecordService {
     // 複数の趣味がある場合は最初の趣味の色をベースにする
     return getHobbyColor(hobbyNames.first);
   }
+  
+  /// 無料版の期間制限を適用（過去2週間まで）
+  static PeriodInfo _applyFreeTierLimit(PeriodInfo originalPeriod) {
+    final now = DateTime.now();
+    final twoWeeksAgo = now.subtract(const Duration(days: 14));
+    
+    // 期間の開始日が2週間より古い場合は制限を適用
+    if (originalPeriod.startDate.isBefore(twoWeeksAgo)) {
+      return PeriodInfo(
+        startDate: twoWeeksAgo,
+        endDate: originalPeriod.endDate,
+        periodType: originalPeriod.periodType,
+        displayTitle: originalPeriod.displayTitle,
+      );
+    }
+    
+    return originalPeriod;
+  }
+  
+  /// 指定期間が無料版制限内かチェック
+  static bool isPeriodAvailableInFreeTier(PeriodInfo period) {
+    final now = DateTime.now();
+    final twoWeeksAgo = now.subtract(const Duration(days: 14));
+    
+    return !period.startDate.isBefore(twoWeeksAgo);
+  }
+  
+  /// 指定期間タイプが無料版で利用可能かチェック（一部でも表示可能期間が含まれているか）
+  static bool isPeriodTypeAvailableInFreeTier(PeriodType periodType) {
+    final now = DateTime.now();
+    final twoWeeksAgo = now.subtract(const Duration(days: 14));
+    
+    // 今日を含む期間を作成
+    final todayPeriod = getCurrentPeriodInfo(periodType, now);
+    
+    // 期間の終了日が2週間制限より新しければ、一部でも表示可能
+    return !todayPeriod.endDate.isBefore(twoWeeksAgo);
+  }
+  
+  /// 指定期間に表示可能な部分があるかチェック（無料版制限を考慮）
+  static bool hasVisiblePortionInFreeTier(PeriodInfo period) {
+    final now = DateTime.now();
+    final twoWeeksAgo = now.subtract(const Duration(days: 14));
+    
+    // 期間の終了日が2週間制限より新しければ、一部でも表示可能
+    return !period.endDate.isBefore(twoWeeksAgo);
+  }
+  
+  /// 指定期間の制限状況を取得（年間カレンダー用）
+  static FreeTierRestrictionStatus getFreeTierRestrictionStatus(PeriodInfo period) {
+    final now = DateTime.now();
+    final twoWeeksAgo = now.subtract(const Duration(days: 14));
+    
+    final startAvailable = !period.startDate.isBefore(twoWeeksAgo);
+    final endAvailable = !period.endDate.isBefore(twoWeeksAgo);
+    
+    if (startAvailable && endAvailable) {
+      return FreeTierRestrictionStatus.fullyAvailable;
+    } else if (endAvailable) {
+      return FreeTierRestrictionStatus.partiallyAvailable;
+    } else {
+      return FreeTierRestrictionStatus.fullyRestricted;
+    }
+  }
+  
+  /// 指定日付が無料版制限内かチェック
+  static bool isDateAvailableInFreeTier(DateTime date) {
+    final now = DateTime.now();
+    final twoWeeksAgo = now.subtract(const Duration(days: 14));
+    
+    return !date.isBefore(twoWeeksAgo);
+  }
+  
+  /// 指定日付が未来の日付かチェック
+  static bool isDateInFuture(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDate = DateTime(date.year, date.month, date.day);
+    
+    return targetDate.isAfter(today);
+  }
+}
+
+/// 無料版制限の状況
+enum FreeTierRestrictionStatus {
+  fullyAvailable,     // 全期間利用可能
+  partiallyAvailable, // 一部期間のみ利用可能
+  fullyRestricted,    // 全期間制限
 }

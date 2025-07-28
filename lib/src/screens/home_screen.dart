@@ -10,10 +10,12 @@ import '../models/category.dart';
 import '../providers/hobby_list_provider.dart';
 import '../providers/category_provider.dart';
 import '../providers/activity_record_provider.dart';
+import '../providers/premium_provider.dart';
 import '../services/background_image_service.dart';
 import '../services/category_service.dart';
 import '../services/memo_service.dart';
 import '../services/activity_record_service.dart';
+import 'premium_plan_selection_screen.dart';
 import 'add_hobby_screen.dart';
 import 'edit_hobby_screen.dart';
 import 'detail_hobby_screen.dart';
@@ -1825,12 +1827,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         
         // 横フリック: 期間移動
         if (details.velocity.pixelsPerSecond.dx.abs() > sensitivity) {
+          final currentPeriod = ref.read(activityPeriodInfoProvider);
+          final isPremium = ref.read(premiumProvider);
+          
           if (details.velocity.pixelsPerSecond.dx > sensitivity) {
             // 右フリック: 前の期間
-            ref.read(activityRecordProvider.notifier).goToPreviousPeriod();
+            final previousPeriod = ActivityRecordService.getPreviousPeriodInfo(currentPeriod);
+            final canGoPrevious = isPremium || ActivityRecordService.hasVisiblePortionInFreeTier(previousPeriod);
+            if (canGoPrevious) {
+              _goToPreviousPeriod();
+            }
           } else if (details.velocity.pixelsPerSecond.dx < -sensitivity) {
             // 左フリック: 次の期間
-            ref.read(activityRecordProvider.notifier).goToNextPeriod();
+            final nextPeriod = ActivityRecordService.getNextPeriodInfo(currentPeriod);
+            final isNotFuture = !nextPeriod.startDate.isAfter(DateTime.now());
+            final isAccessible = isPremium || ActivityRecordService.hasVisiblePortionInFreeTier(nextPeriod);
+            final canGoNext = isNotFuture && isAccessible;
+            if (canGoNext) {
+              _goToNextPeriod();
+            }
           }
         }
       },
@@ -1848,15 +1863,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             mainAxisSize: MainAxisSize.min,
             children: [
               // 前の期間ボタン
-              GestureDetector(
-                onTap: () {
-                  ref.read(activityRecordProvider.notifier).goToPreviousPeriod();
+              Consumer(
+                builder: (context, ref, child) {
+                  final currentPeriod = ref.watch(activityPeriodInfoProvider);
+                  final previousPeriod = ActivityRecordService.getPreviousPeriodInfo(currentPeriod);
+                  final isPremium = ref.watch(premiumProvider);
+                  final canGoPrevious = isPremium || ActivityRecordService.hasVisiblePortionInFreeTier(previousPeriod);
+                  
+                  return GestureDetector(
+                    onTap: canGoPrevious ? () {
+                      _goToPreviousPeriod();
+                    } : null,
+                    child: Icon(
+                      Icons.chevron_left,
+                      color: canGoPrevious ? Colors.grey[600] : Colors.grey[300],
+                      size: 18,
+                    ),
+                  );
                 },
-                child: Icon(
-                  Icons.chevron_left,
-                  color: Colors.grey[600],
-                  size: 18,
-                ),
               ),
               
               const SizedBox(width: 8),
@@ -1897,11 +1921,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 builder: (context, ref, child) {
                   final currentPeriod = ref.watch(activityPeriodInfoProvider);
                   final nextPeriod = ActivityRecordService.getNextPeriodInfo(currentPeriod);
-                  final canGoNext = !nextPeriod.startDate.isAfter(DateTime.now());
+                  final isPremium = ref.watch(premiumProvider);
+                  final isNotFuture = !nextPeriod.startDate.isAfter(DateTime.now());
+                  final isAccessible = isPremium || ActivityRecordService.hasVisiblePortionInFreeTier(nextPeriod);
+                  final canGoNext = isNotFuture && isAccessible;
                   
                   return GestureDetector(
                     onTap: canGoNext ? () {
-                      ref.read(activityRecordProvider.notifier).goToNextPeriod();
+                      _goToNextPeriod();
                     } : null,
                     child: Icon(
                       Icons.chevron_right,
@@ -2052,8 +2079,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   /// 期間タイプのアイコンを取得
   IconData _getPeriodTypeIcon(PeriodType type) {
     switch (type) {
-      case PeriodType.weekly:
-        return Icons.view_week;
+      case PeriodType.biweekly:
+        return Icons.date_range;
       case PeriodType.monthly:
         return Icons.calendar_view_month;
       case PeriodType.yearly:
@@ -2064,8 +2091,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   /// 期間タイプの説明文を取得
   String _getPeriodTypeDescription(PeriodType type) {
     switch (type) {
-      case PeriodType.weekly:
-        return '1週間の活動を表示';
+      case PeriodType.biweekly:
+        return '2週間の活動を表示';
       case PeriodType.monthly:
         return '1ヶ月の活動を表示';
       case PeriodType.yearly:
@@ -2075,7 +2102,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   
   /// 活動統計カードを構築
   Widget _buildActivityStatisticsCard() {
-    final statisticsAsync = ref.watch(activityRecordProvider);
+    final categoryId = ref.watch(activityCategoryIdProvider);
+    final statisticsAsync = ref.watch(activityStatisticsProvider(categoryId));
     
     return statisticsAsync.when(
       data: (statistics) => Column(
@@ -2244,7 +2272,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   /// 活動カレンダーカードを構築
   Widget _buildActivityCalendarCard() {
     final periodType = ref.watch(activityPeriodTypeProvider);
-    final statisticsAsync = ref.watch(activityRecordProvider);
+    final categoryId = ref.watch(activityCategoryIdProvider);
+    final statisticsAsync = ref.watch(activityStatisticsProvider(categoryId));
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2274,8 +2303,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         statisticsAsync.when(
           data: (statistics) {
             switch (periodType) {
-              case PeriodType.weekly:
-                return _buildWeeklyCalendar(statistics);
+              case PeriodType.biweekly:
+                return _buildBiweeklyCalendar(statistics);
               case PeriodType.monthly:
                 return _buildMonthlyCalendar(statistics);
               case PeriodType.yearly:
@@ -2302,9 +2331,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     );
   }
   
-  /// 週間カレンダーを構築
-  Widget _buildWeeklyCalendar(ActivityStatistics statistics) {
+  /// 2週間カレンダーを構築
+  Widget _buildBiweeklyCalendar(ActivityStatistics statistics) {
     final periodInfo = ref.watch(activityPeriodInfoProvider);
+    final isPremium = ref.watch(premiumProvider);
     final weekDays = ['月', '火', '水', '木', '金', '土', '日'];
     
     return Column(
@@ -2326,28 +2356,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         
         const SizedBox(height: 8),
         
-        // 週の日付
+        // 1週目の日付（通常順序）
         Row(
           children: List.generate(7, (index) {
-            final date = periodInfo.startDate.add(Duration(days: index));
+            final date = periodInfo.startDate.add(Duration(days: index)); // 1週目
             final hasActivity = ActivityRecordService.hasActivityOnDate(statistics.dailyCount, date);
             final hobbiesOnDate = ActivityRecordService.getHobbiesOnDate(statistics.dailyHobbies, date);
             final hobbyColor = hasActivity 
                 ? ActivityRecordService.getMixedHobbyColor(hobbiesOnDate)
                 : Colors.grey[300]!;
             
+            // 無料版制限チェック
+            final isDateAvailable = isPremium || ActivityRecordService.isDateAvailableInFreeTier(date);
+            final isFutureDate = ActivityRecordService.isDateInFuture(date);
+            
             return Expanded(
               child: Container(
                 height: 36,
                 margin: const EdgeInsets.all(1),
                 decoration: BoxDecoration(
-                  color: hasActivity 
-                      ? hobbyColor.withOpacity(0.2)
-                      : Colors.grey[50],
+                  color: isFutureDate
+                      ? Colors.blue[50]
+                      : !isDateAvailable
+                          ? Colors.grey[200]
+                          : hasActivity 
+                              ? hobbyColor.withOpacity(0.2)
+                              : Colors.grey[50],
                   borderRadius: BorderRadius.circular(6),
-                  border: hasActivity 
-                      ? Border.all(color: hobbyColor, width: 1.5)
-                      : null,
+                  border: isFutureDate
+                      ? Border.all(color: Colors.blue[300]!, width: 2.0)
+                      : hasActivity && isDateAvailable
+                          ? Border.all(color: hobbyColor, width: 1.5)
+                          : !isDateAvailable
+                              ? Border.all(color: Colors.grey[400]!, width: 1.5)
+                              : null,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2356,13 +2398,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       '${date.day}',
                       style: TextStyle(
                         fontSize: 10,
-                        fontWeight: hasActivity ? FontWeight.bold : FontWeight.normal,
-                        color: hasActivity 
-                            ? hobbyColor.withOpacity(0.8)
-                            : Colors.grey[600],
+                        fontWeight: hasActivity && isDateAvailable && !isFutureDate ? FontWeight.bold : FontWeight.normal,
+                        fontStyle: isFutureDate ? FontStyle.italic : FontStyle.normal,
+                        color: isFutureDate
+                            ? Colors.blue[600]
+                            : !isDateAvailable
+                                ? Colors.grey[400]
+                                : hasActivity 
+                                    ? hobbyColor.withOpacity(0.8)
+                                    : Colors.grey[600],
                       ),
                     ),
-                    if (hasActivity && hobbiesOnDate.length > 1)
+                    if (hasActivity && hobbiesOnDate.length > 1 && isDateAvailable && !isFutureDate)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: hobbiesOnDate.take(3).map((hobby) => Container(
@@ -2375,7 +2422,91 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           ),
                         )).toList(),
                       )
-                    else if (hasActivity)
+                    else if (hasActivity && isDateAvailable && !isFutureDate)
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: hobbyColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+        
+        const SizedBox(height: 4),
+        
+        // 2週目の日付（通常順序）
+        Row(
+          children: List.generate(7, (index) {
+            final date = periodInfo.startDate.add(Duration(days: index + 7)); // 2週目
+            final hasActivity = ActivityRecordService.hasActivityOnDate(statistics.dailyCount, date);
+            final hobbiesOnDate = ActivityRecordService.getHobbiesOnDate(statistics.dailyHobbies, date);
+            final hobbyColor = hasActivity 
+                ? ActivityRecordService.getMixedHobbyColor(hobbiesOnDate)
+                : Colors.grey[300]!;
+            
+            // 無料版制限チェック
+            final isDateAvailable = isPremium || ActivityRecordService.isDateAvailableInFreeTier(date);
+            final isFutureDate = ActivityRecordService.isDateInFuture(date);
+            
+            return Expanded(
+              child: Container(
+                height: 36,
+                margin: const EdgeInsets.all(1),
+                decoration: BoxDecoration(
+                  color: isFutureDate
+                      ? Colors.blue[50]
+                      : !isDateAvailable
+                          ? Colors.grey[200]
+                          : hasActivity 
+                              ? hobbyColor.withOpacity(0.2)
+                              : Colors.grey[50],
+                  borderRadius: BorderRadius.circular(6),
+                  border: isFutureDate
+                      ? Border.all(color: Colors.blue[300]!, width: 2.0)
+                      : hasActivity && isDateAvailable
+                          ? Border.all(color: hobbyColor, width: 1.5)
+                          : !isDateAvailable
+                              ? Border.all(color: Colors.grey[400]!, width: 1.5)
+                              : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${date.day}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: hasActivity && isDateAvailable && !isFutureDate ? FontWeight.bold : FontWeight.normal,
+                        fontStyle: isFutureDate ? FontStyle.italic : FontStyle.normal,
+                        color: isFutureDate
+                            ? Colors.blue[600]
+                            : !isDateAvailable
+                                ? Colors.grey[400]
+                                : hasActivity 
+                                    ? hobbyColor.withOpacity(0.8)
+                                    : Colors.grey[600],
+                      ),
+                    ),
+                    if (hasActivity && hobbiesOnDate.length > 1 && isDateAvailable && !isFutureDate)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: hobbiesOnDate.take(3).map((hobby) => Container(
+                          width: 3,
+                          height: 3,
+                          margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                          decoration: BoxDecoration(
+                            color: ActivityRecordService.getHobbyColor(hobby),
+                            shape: BoxShape.circle,
+                          ),
+                        )).toList(),
+                      )
+                    else if (hasActivity && isDateAvailable && !isFutureDate)
                       Container(
                         width: 4,
                         height: 4,
@@ -2406,6 +2537,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     final firstDayOfMonth = DateTime(periodInfo.startDate.year, periodInfo.startDate.month, 1);
     final lastDayOfMonth = DateTime(periodInfo.startDate.year, periodInfo.startDate.month + 1, 0);
     final startOfCalendar = firstDayOfMonth.subtract(Duration(days: firstDayOfMonth.weekday - 1));
+    final isPremium = ref.watch(premiumProvider);
     
     final weekDays = ['月', '火', '水', '木', '金', '土', '日'];
     
@@ -2450,6 +2582,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     ? ActivityRecordService.getMixedHobbyColor(hobbiesOnDate)
                     : Colors.grey[300]!;
                 
+                // 無料版制限チェック
+                final isDateAvailable = isPremium || ActivityRecordService.isDateAvailableInFreeTier(date);
+                final isFutureDate = ActivityRecordService.isDateInFuture(date);
+                
                 return Expanded(
                   child: Container(
                     height: 28,
@@ -2457,13 +2593,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     decoration: BoxDecoration(
                       color: !isCurrentMonth 
                           ? Colors.transparent
-                          : hasActivity 
-                              ? hobbyColor.withOpacity(0.2)
-                              : Colors.grey[50],
+                          : isFutureDate
+                              ? Colors.blue[50]
+                              : !isDateAvailable
+                                  ? Colors.grey[200]
+                                  : hasActivity 
+                                      ? hobbyColor.withOpacity(0.2)
+                                      : Colors.grey[50],
                       borderRadius: BorderRadius.circular(4),
-                      border: hasActivity && isCurrentMonth
-                          ? Border.all(color: hobbyColor, width: 1)
-                          : null,
+                      border: isFutureDate && isCurrentMonth
+                          ? Border.all(color: Colors.blue[300]!, width: 1.5)
+                          : hasActivity && isCurrentMonth && isDateAvailable
+                              ? Border.all(color: hobbyColor, width: 1)
+                              : !isDateAvailable && isCurrentMonth
+                                  ? Border.all(color: Colors.grey[400]!, width: 1, style: BorderStyle.solid)
+                                  : null,
                     ),
                     child: isCurrentMonth ? Center(
                       child: Column(
@@ -2473,13 +2617,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                             '${date.day}',
                             style: TextStyle(
                               fontSize: 9,
-                              fontWeight: hasActivity ? FontWeight.bold : FontWeight.normal,
-                              color: hasActivity 
-                                  ? hobbyColor.withOpacity(0.8)
-                                  : Colors.grey[600],
+                              fontWeight: hasActivity && isDateAvailable && !isFutureDate ? FontWeight.bold : FontWeight.normal,
+                              fontStyle: isFutureDate ? FontStyle.italic : FontStyle.normal,
+                              color: isFutureDate
+                                  ? Colors.blue[600]
+                                  : !isDateAvailable
+                                      ? Colors.grey[400]
+                                      : hasActivity 
+                                          ? hobbyColor.withOpacity(0.8)
+                                          : Colors.grey[600],
                             ),
                           ),
-                          if (hasActivity && hobbiesOnDate.length > 1)
+                          if (hasActivity && hobbiesOnDate.length > 1 && isDateAvailable && !isFutureDate)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: hobbiesOnDate.take(2).map((hobby) => Container(
@@ -2492,7 +2641,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                 ),
                               )).toList(),
                             )
-                          else if (hasActivity)
+                          else if (hasActivity && isDateAvailable && !isFutureDate)
                             Container(
                               width: 6,
                               height: 1.5,
@@ -2524,9 +2673,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   Widget _buildYearlyCalendar(ActivityStatistics statistics) {
     final periodInfo = ref.watch(activityPeriodInfoProvider);
     final year = periodInfo.startDate.year;
+    final isPremium = ref.watch(premiumProvider);
     
     return Column(
       children: [
+        // 無料版制限の注意書き
+        if (!isPremium) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange[200]!, width: 1),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: Colors.orange[700],
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '無料版では過去2週間のデータのみ表示されています',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         // 月別サマリー
         GridView.builder(
           shrinkWrap: true,
@@ -2539,9 +2720,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           ),
           itemCount: 12,
           itemBuilder: (context, index) {
-            final month = index + 1;
-            final monthStart = DateTime(year, month, 1);
-            final monthEnd = DateTime(year, month + 1, 0);
+            final month = index + 1; // 1月から12月の順に表示
             
             // その月のアクティビティ数と趣味を計算
             final monthActivityCount = statistics.dailyCount.entries
@@ -2563,30 +2742,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 ? ActivityRecordService.getMixedHobbyColor(monthHobbies)
                 : Colors.grey[300]!;
             
+            // 月全体の制限状況をチェック
+            final monthPeriod = ActivityRecordService.getCurrentPeriodInfo(PeriodType.monthly, DateTime(year, month, 1));
+            final isMonthAvailable = isPremium || ActivityRecordService.hasVisiblePortionInFreeTier(monthPeriod);
+            final isMonthFuture = monthPeriod.startDate.isAfter(DateTime.now());
+            
             return Container(
               decoration: BoxDecoration(
-                color: hasActivity 
-                    ? monthColor.withOpacity(0.1)
-                    : Colors.grey[50],
+                color: isMonthFuture
+                    ? Colors.blue[50]
+                    : !isMonthAvailable
+                        ? Colors.grey[200]
+                        : hasActivity 
+                            ? monthColor.withOpacity(0.1)
+                            : Colors.grey[50],
                 borderRadius: BorderRadius.circular(6),
-                border: hasActivity 
-                    ? Border.all(color: monthColor, width: 1)
-                    : null,
+                border: isMonthFuture
+                    ? Border.all(color: Colors.blue[300]!, width: 2.0)
+                    : !isMonthAvailable
+                        ? Border.all(color: Colors.grey[400]!, width: 1.5)
+                        : hasActivity
+                            ? Border.all(color: monthColor, width: 1)
+                            : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    '${month}月',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: hasActivity ? FontWeight.bold : FontWeight.normal,
-                      color: hasActivity 
-                          ? monthColor.withOpacity(0.8)
-                          : Colors.grey[600],
-                    ),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Text(
+                        '${month}月',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: hasActivity && isMonthAvailable && !isMonthFuture ? FontWeight.bold : FontWeight.normal,
+                          color: isMonthFuture
+                              ? Colors.blue[700]
+                              : !isMonthAvailable
+                                  ? Colors.grey[400]
+                                  : hasActivity 
+                                      ? monthColor.withOpacity(0.8)
+                                      : Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
-                  if (hasActivity)
+                  if (hasActivity && isMonthAvailable && !isMonthFuture)
                     Text(
                       '$monthActivityCount件',
                       style: TextStyle(
@@ -2594,7 +2795,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         color: monthColor,
                       ),
                     ),
-                  if (hasActivity && monthHobbies.length > 1)
+                  if (hasActivity && monthHobbies.length > 1 && isMonthAvailable && !isMonthFuture)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: monthHobbies.take(3).map((hobby) => Container(
@@ -2685,14 +2886,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   
   /// 最近のメモカードを構築
   Widget _buildRecentMemosCard() {
-    final statisticsAsync = ref.watch(activityRecordProvider);
+    final categoryId = ref.watch(activityCategoryIdProvider);
+    final statisticsAsync = ref.watch(activityStatisticsProvider(categoryId));
     final periodType = ref.watch(activityPeriodTypeProvider);
     
     // 期間タイプに応じたタイトル
     String getPeriodTitle() {
       switch (periodType) {
-        case PeriodType.weekly:
-          return 'この週のメモ';
+        case PeriodType.biweekly:
+          return 'この2週間のメモ';
         case PeriodType.monthly:
           return 'この月のメモ';
         case PeriodType.yearly:
@@ -2906,6 +3108,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     return '${today.year}年${today.month}月${today.day}日（$weekday）';
   }
 
+  /// プレミアムアップグレードダイアログを表示
+  void _showPremiumUpgradeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.lock,
+              color: Colors.amber[600],
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'プレミアム機能',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          '過去2週間より古い活動記録を見るには、プレミアム版へのアップグレードが必要です。',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // プレミアムプラン選択画面を表示
+              showDialog(
+                context: context,
+                builder: (_) => const PremiumPlanSelectionScreen(),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('アップグレード'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 期間選択ボトムシートを表示
   void _showPeriodSelectionBottomSheet() {
     showModalBottomSheet(
@@ -2984,15 +3240,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
-                      children: PeriodType.values.map((type) {
-                        final isSelected = type == currentPeriodType;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              ref.read(activityRecordProvider.notifier).changePeriodType(type);
-                              setBottomSheetState(() {});
-                            },
+                    child: Consumer(
+                      builder: (context, ref, _) {
+                        final isPremium = ref.watch(premiumProvider);
+                        
+                        return Row(
+                          children: PeriodType.values.map((type) {
+                            final isSelected = type == currentPeriodType;
+                            
+                            // 期間タイプが利用可能かチェック
+                            bool isTypeAvailable;
+                            if (isPremium) {
+                              isTypeAvailable = true;
+                            } else {
+                              // 無料版では、期間タイプで一部でも表示可能期間が含まれているかチェック
+                              isTypeAvailable = ActivityRecordService.isPeriodTypeAvailableInFreeTier(type);
+                            }
+                            
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: isTypeAvailable ? () {
+                                  ref.read(activityRecordProvider.notifier).changePeriodType(type);
+                                  setBottomSheetState(() {});
+                                } : () => _showPremiumUpgradeDialog(),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
@@ -3008,7 +3278,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                     _getPeriodTypeIcon(type),
                                     color: isSelected 
                                         ? Colors.white 
-                                        : Colors.grey[600],
+                                        : (isTypeAvailable ? Colors.grey[600] : Colors.grey[400]),
                                     size: 16,
                                   ),
                                   const SizedBox(width: 6),
@@ -3019,15 +3289,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                       fontWeight: FontWeight.w600,
                                       color: isSelected 
                                           ? Colors.white 
-                                          : Colors.grey[600],
+                                          : (isTypeAvailable ? Colors.grey[600] : Colors.grey[400]),
                                     ),
                                   ),
+                                  if (!isTypeAvailable) ...[
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.lock,
+                                      size: 12,
+                                      color: isSelected ? Colors.white : Colors.grey[400],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
                           ),
                         );
-                      }).toList(),
+                          }).toList(),
+                        );
+                      },
                     ),
                   ),
                   
@@ -3078,8 +3358,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         return _buildYearSelectionList(currentDate);
       case PeriodType.monthly:
         return _buildMonthSelectionList(currentDate);
-      case PeriodType.weekly:
-        return _buildWeekSelectionList(currentDate);
+      case PeriodType.biweekly:
+        return _buildBiweekSelectionList(currentDate);
     }
   }
 
@@ -3090,61 +3370,83 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     // 今日の年から過去10年間のみ表示
     final years = List.generate(10, (index) => todayYear - index);
     
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: years.length,
-      itemBuilder: (context, index) {
-        final year = years[index];
-        final isSelected = year == currentYear;
+    return Consumer(
+      builder: (context, ref, _) {
+        final isPremium = ref.watch(premiumProvider);
         
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isSelected 
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: years.length,
+          itemBuilder: (context, index) {
+            final year = years[index];
+            final isSelected = year == currentYear;
+            final yearPeriod = ActivityRecordService.getCurrentPeriodInfo(PeriodType.yearly, DateTime(year, 1, 1));
+            final isAvailable = isPremium || ActivityRecordService.hasVisiblePortionInFreeTier(yearPeriod);
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? Theme.of(context).colorScheme.primary
+                        : (isAvailable ? Colors.grey[100] : Colors.grey[50]),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.calendar_view_month,
+                    color: isSelected 
+                        ? Colors.white 
+                        : (isAvailable ? Colors.grey[600] : Colors.grey[300]),
+                    size: 20,
+                  ),
+                ),
+                title: Row(
+                  children: [
+                    Text(
+                      '${year}年',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected 
+                            ? Theme.of(context).colorScheme.primary
+                            : (isAvailable ? Colors.black87 : Colors.grey[400]),
+                      ),
+                    ),
+                    if (!isAvailable) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.lock,
+                        size: 16,
+                        color: Colors.grey[400],
+                      ),
+                    ],
+                  ],
+                ),
+                trailing: isSelected 
+                    ? Icon(
+                        Icons.check_circle,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 24,
+                      )
+                    : null,
+                onTap: isAvailable ? () {
+                  final newDate = DateTime(year, currentDate.month, currentDate.day);
+                  ref.read(activityBaseDateProvider.notifier).state = newDate;
+                  ref.read(activityRecordProvider.notifier).reload();
+                  Navigator.pop(context);
+                } : () => _showPremiumUpgradeDialog(),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                tileColor: isSelected 
+                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                    : null,
               ),
-              child: Icon(
-                Icons.calendar_view_month,
-                color: isSelected ? Colors.white : Colors.grey[600],
-                size: 20,
-              ),
-            ),
-            title: Text(
-              '${year}年',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected 
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.black87,
-              ),
-            ),
-            trailing: isSelected 
-                ? Icon(
-                    Icons.check_circle,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 24,
-                  )
-                : null,
-            onTap: () {
-              final newDate = DateTime(year, currentDate.month, currentDate.day);
-              ref.read(activityBaseDateProvider.notifier).state = newDate;
-              ref.read(activityRecordProvider.notifier).reload();
-              Navigator.pop(context);
-            },
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            tileColor: isSelected 
-                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                : null,
-          ),
+            );
+          },
         );
       },
     );
@@ -3165,145 +3467,219 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       months.add(monthDate);
     }
     
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: months.length,
-      itemBuilder: (context, index) {
-        final monthDate = months[index];
-        final isSelected = monthDate.month == currentMonth && monthDate.year == currentYear;
+    return Consumer(
+      builder: (context, ref, _) {
+        final isPremium = ref.watch(premiumProvider);
         
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isSelected 
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: months.length,
+          itemBuilder: (context, index) {
+            final monthDate = months[index];
+            final isSelected = monthDate.month == currentMonth && monthDate.year == currentYear;
+            final monthPeriod = ActivityRecordService.getCurrentPeriodInfo(PeriodType.monthly, monthDate);
+            final isAvailable = isPremium || ActivityRecordService.hasVisiblePortionInFreeTier(monthPeriod);
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? Theme.of(context).colorScheme.primary
+                        : (isAvailable ? Colors.grey[100] : Colors.grey[50]),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.calendar_view_month,
+                    color: isSelected 
+                        ? Colors.white 
+                        : (isAvailable ? Colors.grey[600] : Colors.grey[300]),
+                    size: 20,
+                  ),
+                ),
+                title: Row(
+                  children: [
+                    Text(
+                      '${monthDate.year}年${monthDate.month}月',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected 
+                            ? Theme.of(context).colorScheme.primary
+                            : (isAvailable ? Colors.black87 : Colors.grey[400]),
+                      ),
+                    ),
+                    if (!isAvailable) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.lock,
+                        size: 16,
+                        color: Colors.grey[400],
+                      ),
+                    ],
+                  ],
+                ),
+                trailing: isSelected 
+                    ? Icon(
+                        Icons.check_circle,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 24,
+                      )
+                    : null,
+                onTap: isAvailable ? () {
+                  final newDate = DateTime(monthDate.year, monthDate.month, currentDate.day);
+                  ref.read(activityBaseDateProvider.notifier).state = newDate;
+                  ref.read(activityRecordProvider.notifier).reload();
+                  Navigator.pop(context);
+                } : () => _showPremiumUpgradeDialog(),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                tileColor: isSelected 
+                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                    : null,
               ),
-              child: Icon(
-                Icons.calendar_view_month,
-                color: isSelected ? Colors.white : Colors.grey[600],
-                size: 20,
-              ),
-            ),
-            title: Text(
-              '${monthDate.year}年${monthDate.month}月',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected 
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.black87,
-              ),
-            ),
-            trailing: isSelected 
-                ? Icon(
-                    Icons.check_circle,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 24,
-                  )
-                : null,
-            onTap: () {
-              final newDate = DateTime(monthDate.year, monthDate.month, currentDate.day);
-              ref.read(activityBaseDateProvider.notifier).state = newDate;
-              ref.read(activityRecordProvider.notifier).reload();
-              Navigator.pop(context);
-            },
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            tileColor: isSelected 
-                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                : null,
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  /// 週選択リストを構築
-  Widget _buildWeekSelectionList(DateTime currentDate) {
-    final weeks = <DateTime>[];
+  /// 2週間選択リストを構築
+  Widget _buildBiweekSelectionList(DateTime currentDate) {
+    final biweeks = <DateTime>[];
     final now = DateTime.now();
     
-    // 今日を含む週を最上位にして、過去16週間を時系列逆順で表示
+    // 今日を含む2週間を最上位にして、過去16回分（32週間）を時系列逆順で表示
     for (int i = 0; i <= 16; i++) {
-      final weekStart = now.subtract(Duration(days: i * 7));
-      final mondayOfWeek = weekStart.subtract(Duration(days: weekStart.weekday - 1));
-      weeks.add(mondayOfWeek);
+      final biweekStart = now.subtract(Duration(days: i * 14));
+      final mondayOfBiweek = biweekStart.subtract(Duration(days: biweekStart.weekday - 1));
+      biweeks.add(mondayOfBiweek);
     }
     
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: weeks.length,
-      itemBuilder: (context, index) {
-        final weekStart = weeks[index];
-        final weekEnd = weekStart.add(const Duration(days: 6));
-        final currentWeekStart = currentDate.subtract(Duration(days: currentDate.weekday - 1));
-        final isSelected = weekStart.year == currentWeekStart.year &&
-                          weekStart.month == currentWeekStart.month &&
-                          weekStart.day == currentWeekStart.day;
+    return Consumer(
+      builder: (context, ref, _) {
+        final isPremium = ref.watch(premiumProvider);
         
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isSelected 
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: biweeks.length,
+          itemBuilder: (context, index) {
+            final biweekStart = biweeks[index];
+            final biweekEnd = biweekStart.add(const Duration(days: 13));
+            final currentBiweekStart = currentDate.subtract(Duration(days: currentDate.weekday - 1));
+            final isSelected = biweekStart.year == currentBiweekStart.year &&
+                              biweekStart.month == currentBiweekStart.month &&
+                              biweekStart.day == currentBiweekStart.day;
+            final biweekPeriod = ActivityRecordService.getCurrentPeriodInfo(PeriodType.biweekly, biweekStart);
+            final isAvailable = isPremium || ActivityRecordService.hasVisiblePortionInFreeTier(biweekPeriod);
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? Theme.of(context).colorScheme.primary
+                        : (isAvailable ? Colors.grey[100] : Colors.grey[50]),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.date_range,
+                    color: isSelected 
+                        ? Colors.white 
+                        : (isAvailable ? Colors.grey[600] : Colors.grey[300]),
+                    size: 20,
+                  ),
+                ),
+                title: Row(
+                  children: [
+                    Text(
+                      '${biweekStart.month}/${biweekStart.day} - ${biweekEnd.month}/${biweekEnd.day}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected 
+                            ? Theme.of(context).colorScheme.primary
+                            : (isAvailable ? Colors.black87 : Colors.grey[400]),
+                      ),
+                    ),
+                    if (!isAvailable) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.lock,
+                        size: 16,
+                        color: Colors.grey[400],
+                      ),
+                    ],
+                  ],
+                ),
+                subtitle: Text(
+                  '${biweekStart.year}年',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isAvailable ? Colors.grey[600] : Colors.grey[400],
+                  ),
+                ),
+                trailing: isSelected 
+                    ? Icon(
+                        Icons.check_circle,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 24,
+                      )
+                    : null,
+                onTap: isAvailable ? () {
+                  ref.read(activityBaseDateProvider.notifier).state = biweekStart;
+                  ref.read(activityRecordProvider.notifier).reload();
+                  Navigator.pop(context);
+                } : () => _showPremiumUpgradeDialog(),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                tileColor: isSelected 
+                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                    : null,
               ),
-              child: Icon(
-                Icons.view_week,
-                color: isSelected ? Colors.white : Colors.grey[600],
-                size: 20,
-              ),
-            ),
-            title: Text(
-              '${weekStart.month}/${weekStart.day} - ${weekEnd.month}/${weekEnd.day}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected 
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.black87,
-              ),
-            ),
-            subtitle: Text(
-              '${weekStart.year}年',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-            trailing: isSelected 
-                ? Icon(
-                    Icons.check_circle,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 24,
-                  )
-                : null,
-            onTap: () {
-              ref.read(activityBaseDateProvider.notifier).state = weekStart;
-              ref.read(activityRecordProvider.notifier).reload();
-              Navigator.pop(context);
-            },
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            tileColor: isSelected 
-                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                : null,
-          ),
+            );
+          },
         );
       },
     );
+  }
+
+  /// 前の期間に移動
+  void _goToPreviousPeriod() {
+    final currentPeriod = ref.read(activityPeriodInfoProvider);
+    final previousPeriod = ActivityRecordService.getPreviousPeriodInfo(currentPeriod);
+    
+    // 基準日を更新（プロバイダーが自動的に再計算される）
+    ref.read(activityBaseDateProvider.notifier).state = previousPeriod.startDate;
+  }
+
+  /// 次の期間に移動
+  void _goToNextPeriod() {
+    final currentPeriod = ref.read(activityPeriodInfoProvider);
+    final nextPeriod = ActivityRecordService.getNextPeriodInfo(currentPeriod);
+    final isPremium = ref.read(premiumProvider);
+    
+    // 未来の期間への移動を制限
+    final today = DateTime.now();
+    if (nextPeriod.startDate.isAfter(today)) {
+      return; // 未来の期間には移動しない
+    }
+    
+    // 無料版ユーザーの場合、閲覧不可能な期間への移動を制限
+    if (!isPremium && !ActivityRecordService.hasVisiblePortionInFreeTier(nextPeriod)) {
+      return; // 閲覧不可能な期間には移動しない
+    }
+    
+    // 基準日を更新（プロバイダーが自動的に再計算される）
+    ref.read(activityBaseDateProvider.notifier).state = nextPeriod.startDate;
   }
 }

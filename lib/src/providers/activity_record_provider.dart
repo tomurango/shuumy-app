@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/activity_record_service.dart';
 import 'hobby_list_provider.dart';
+import 'premium_provider.dart';
 
 /// 活動記録の期間選択プロバイダー
-final activityPeriodTypeProvider = StateProvider<PeriodType>((ref) => PeriodType.monthly);
+final activityPeriodTypeProvider = StateProvider<PeriodType>((ref) => PeriodType.biweekly);
 
 /// 活動記録の基準日プロバイダー
 final activityBaseDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
@@ -22,11 +23,13 @@ final activityCategoryIdProvider = StateProvider<String>((ref) => 'default_all')
 final activityStatisticsProvider = FutureProvider.family<ActivityStatistics, String>((ref, categoryId) async {
   final periodInfo = ref.watch(activityPeriodInfoProvider);
   final hobbies = ref.watch(hobbyListProvider);
+  final isPremium = ref.watch(premiumProvider);
   
   return await ActivityRecordService.getActivityStatistics(
     categoryId: categoryId,
     periodInfo: periodInfo,
     hobbies: hobbies,
+    isPremium: isPremium,
   );
 });
 
@@ -43,11 +46,13 @@ class ActivityRecordNotifier extends StateNotifier<AsyncValue<ActivityStatistics
     try {
       final periodInfo = ref.read(activityPeriodInfoProvider);
       final hobbies = ref.read(hobbyListProvider);
+      final isPremium = ref.read(premiumProvider);
       
       final statistics = await ActivityRecordService.getActivityStatistics(
         categoryId: categoryId,
         periodInfo: periodInfo,
         hobbies: hobbies,
+        isPremium: isPremium,
       );
       
       state = AsyncValue.data(statistics);
@@ -90,7 +95,7 @@ class ActivityRecordNotifier extends StateNotifier<AsyncValue<ActivityStatistics
   
   /// 基準日を更新して統計データを再読み込み
   void _updateBaseDateAndReload(DateTime newBaseDate) {
-    // 基準日を更新
+    // 基準日を更新（FutureProvider.familyが自動的に再計算される）
     ref.read(activityBaseDateProvider.notifier).state = newBaseDate;
     
     // 統計データを再読み込み
