@@ -259,6 +259,37 @@ This is a Flutter app called "シューマイ" (shuumy) - a hobby tracking appli
 - **パフォーマンス**: 並行処理最適化・レスポンシブUI
 - **コード品質**: 型安全性・エラーハンドリング・保守性確保
 
+## 最新の重要修正 (2025-07-28)
+
+### 🔧 活動記録機能の期間境界問題解決
+
+#### 解決した問題
+- **境界データ混入**: 隣接期間のデータが誤って含まれる問題を完全修正
+- **2週間表示実装**: 週間から2週間表示への変更（ユーザー要望対応）
+- **無料版制限強化**: 閲覧不可期間への移動を防止
+
+#### 技術的修正内容
+```dart
+// 修正前（問題あり）
+final startCheck = memoDate.isAfter(periodInfo.startDate.subtract(Duration(days: 1)));
+final endCheck = memoDate.isBefore(periodInfo.endDate.add(Duration(seconds: 1)));
+
+// 修正後（正確）
+final startCheck = !memoDate.isBefore(periodInfo.startDate);
+final endCheck = !memoDate.isAfter(periodInfo.endDate);
+```
+
+#### UI/UX改善
+- **期間移動制限**: 無料版ユーザーの制限を視覚的に表示
+- **ボタン制御**: 移動不可期間のボタンをグレーアウト
+- **フリック制限**: 左右フリック操作でも制限を適用
+- **ミリ秒精度**: 期間終了時刻を `.999` まで対応
+
+#### パフォーマンス最適化
+- **不要処理削除**: `ref.invalidate()` の過剰な使用を除去
+- **自動依存管理**: Riverpodの機能を活用した効率化
+- **デバッグ除去**: 本番環境用のクリーンなコード
+
 ### 📋 次期開発予定
 
 #### 活動記録機能の拡張検討
