@@ -4,6 +4,8 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../services/premium_service.dart';
 import '../providers/premium_provider.dart';
+import 'privacy_policy_screen.dart';
+import 'terms_of_use_screen.dart';
 
 class PremiumPlanSelectionScreen extends ConsumerStatefulWidget {
   const PremiumPlanSelectionScreen({super.key});
@@ -201,6 +203,11 @@ class _PremiumPlanSelectionScreenState extends ConsumerState<PremiumPlanSelectio
                                 ),
                               ),
                             ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // プライバシーポリシー&利用規約リンク
+                            _buildLegalLinks(),
                           ],
                         ),
                       ),
@@ -493,5 +500,69 @@ class _PremiumPlanSelectionScreenState extends ConsumerState<PremiumPlanSelectio
         });
       }
     }
+  }
+
+  Widget _buildLegalLinks() {
+    return Column(
+      children: [
+        Text(
+          '購入により利用規約とプライバシーポリシーに同意したものとみなされます',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TermsOfUseScreen(),
+                  ),
+                );
+              },
+              child: const Text(
+                '利用規約',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF009977),
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+            Text(
+              ' | ',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[400],
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PrivacyPolicyScreen(),
+                  ),
+                );
+              },
+              child: const Text(
+                'プライバシーポリシー',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF009977),
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

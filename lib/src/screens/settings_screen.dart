@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'about_screen.dart';
 import 'privacy_policy_screen.dart';
+import 'terms_of_use_screen.dart';
 import '../services/data_reset_service.dart';
 import 'background_settings_screen.dart';
 import 'category_management_screen.dart';
@@ -179,6 +180,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 
                 _buildDivider(),
                 
+                // 購入を復元
+                _buildSettingItem(
+                  icon: Icons.restore,
+                  title: '購入を復元',
+                  subtitle: '以前の購入を復元します',
+                  onTap: _showRestorePurchasesFromMenu,
+                ),
+                
+                _buildDivider(),
+                
                 // アプリについて
                 _buildSettingItem(
                   icon: Icons.info_outline,
@@ -205,6 +216,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => const PrivacyPolicyScreen(),
+                      ),
+                    );
+                  },
+                ),
+                
+                _buildDivider(),
+                
+                // 利用規約
+                _buildSettingItem(
+                  icon: Icons.description_outlined,
+                  title: '利用規約',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TermsOfUseScreen(),
                       ),
                     );
                   },
@@ -617,6 +644,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return '${date.year}/${date.month}/${date.day}';
   }
   
+  /// メニューからの購入復元を実行
+  void _showRestorePurchasesFromMenu() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+    
+    try {
+      final success = await ref.read(premiumProvider.notifier).restorePurchases();
+      
+      if (mounted) {
+        Navigator.pop(context); // ローディングを閉じる
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success ? '購入を復元しました' : '復元できる購入がありませんでした'),
+            backgroundColor: success ? Colors.green : Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('エラーが発生しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   /// 購入復元を実行
   void _showRestorePurchases() async {
     showDialog(
