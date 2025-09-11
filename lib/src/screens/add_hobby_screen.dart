@@ -14,7 +14,9 @@ import '../providers/premium_provider.dart';
 import 'premium_plan_selection_screen.dart';
 
 class AddHobbyScreen extends ConsumerStatefulWidget {
-  const AddHobbyScreen({super.key});
+  const AddHobbyScreen({super.key, this.initialCategoryId});
+  
+  final String? initialCategoryId;
 
   @override
   ConsumerState<AddHobbyScreen> createState() => _AddHobbyScreenState();
@@ -26,6 +28,15 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
 
   File? _selectedImage;
   String _selectedCategoryId = 'default_all'; // デフォルトは「すべて」カテゴリー
+
+  @override
+  void initState() {
+    super.initState();
+    // 初期カテゴリーIDが指定されている場合は設定
+    if (widget.initialCategoryId != null) {
+      _selectedCategoryId = widget.initialCategoryId!;
+    }
+  }
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(

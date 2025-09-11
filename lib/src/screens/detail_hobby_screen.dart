@@ -8,6 +8,7 @@ import '../models/hobby_memo.dart';
 import '../services/memo_service.dart';
 import 'edit_hobby_screen.dart';
 import 'add_memo_screen.dart';
+import 'edit_memo_screen.dart';
 
 class DetailHobbyScreen extends ConsumerStatefulWidget {
   final Hobby hobby;
@@ -325,7 +326,7 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ヘッダー（時間のみ）
+          // ヘッダー（時間とメニューボタン）
           Row(
             children: [
               Text(
@@ -334,6 +335,43 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
                   fontSize: 14,
                   color: Colors.grey[600],
                 ),
+              ),
+              const Spacer(),
+              PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_horiz,
+                  color: Colors.grey[600],
+                  size: 20,
+                ),
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _editMemo(memo);
+                  } else if (value == 'delete') {
+                    _deleteMemo(memo);
+                  }
+                },
+                itemBuilder: (BuildContext context) => [
+                  const PopupMenuItem<String>(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 18),
+                        SizedBox(width: 8),
+                        Text('編集'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('削除', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -406,5 +444,56 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
   String _getFormattedDate() {
     final now = DateTime.now();
     return '${now.year}/${now.month}/${now.day}';
+  }
+
+  /// メモを削除
+  Future<void> _deleteMemo(HobbyMemo memo) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('メモを削除'),
+        content: const Text('このメモを削除しますか？\n削除したメモは元に戻せません。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('削除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await MemoService.deleteMemo(memo.id);
+      await _loadMemos(); // メモリストを再読み込み
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('メモを削除しました'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  /// メモを編集
+  Future<void> _editMemo(HobbyMemo memo) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditMemoScreen(memo: memo),
+      ),
+    );
+
+    if (result == true) {
+      await _loadMemos(); // メモリストを再読み込み
+    }
   }
 }

@@ -753,20 +753,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       body: Stack(
         children: [
           // 背景表示用のPageView（常に表示）
-          PageView.builder(
-            controller: _pageController,
-            itemCount: categories.length,
-            pageSnapping: true,
-            onPageChanged: (index) {
-              setState(() {
-                _currentPageIndex = index;
-              });
-              _tabController!.animateTo(index);
-            },
-            itemBuilder: (context, index) {
-              final category = categories[index];
-              return _buildCategoryPage(category);
-            },
+          GestureDetector(
+            // 並べ替えモード時に空白部分をタップして終了
+            onTap: _isReorderMode ? _exitReorderMode : null,
+            behavior: HitTestBehavior.translucent, // 子要素がないエリアでもタップを検知
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: categories.length,
+              pageSnapping: true,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPageIndex = index;
+                });
+                _tabController!.animateTo(index);
+              },
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return _buildCategoryPage(category);
+              },
+            ),
           ),
           
           // 活動記録モードのコンテンツオーバーレイ（インライン版に変更）
@@ -782,8 +787,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.only(left: 20, top: 16, right: 20),
-                  child: Row(
-                    children: [
+                  child: GestureDetector(
+                    // 並べ替えモード時にヘッダーの空白部分をタップして終了
+                    onTap: _isReorderMode ? _exitReorderMode : null,
+                    behavior: HitTestBehavior.translucent, // 子要素がないエリアでもタップを検知
+                    child: Row(
+                      children: [
                       // カテゴリ名表示 - Material Design 3準拠
                       GestureDetector(
                         onTap: () => _showCategoryDropdown(context),
@@ -848,6 +857,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           ),
                         ),
                     ],
+                    ),
                   ),
                 ),
               ),
