@@ -135,25 +135,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     }
   }
 
-  /// 動的なスクロール量を計算（画面全体の高さ基準）
+  /// 動的なスクロール量を計算（実際のコンテンツ高さ基準）
   double _calculateScrollAmount() {
     final screenHeight = MediaQuery.of(context).size.height;
+    final categories = ref.read(categoryListProvider);
     
-    // 画面全体の高さ + 大きな余裕分を空白の高さとして使用
-    // 活動記録画面のコンテンツ（3つのカード + マージン + ツールバー）が
-    // 確実に完全表示されるように十分な余裕分を確保
-    return screenHeight + 500.0; // 画面全体 + 大きな余裕分
+    if (categories.isEmpty || _currentPageIndex >= categories.length) {
+      return screenHeight + 500.0; // フォールバック値
+    }
+    
+    // 現在のカテゴリの趣味数を取得
+    final currentCategory = categories[_currentPageIndex];
+    final hobbies = ref.read(hobbyListProvider);
+    final hobbiesInCategory = hobbies.where((hobby) => hobby.categoryId == currentCategory.id).toList();
+    
+    // 趣味カードのサイズ計算
+    const double cardSize = 80.0; // 趣味カード1個のサイズ
+    const double cardSpacing = 8.0; // カード間のスペース
+    const double sectionPadding = 16.0; // セクション余白
+    
+    // グリッドの行数計算（4列グリッド）
+    final int gridRows = (hobbiesInCategory.length / 4).ceil();
+    final double gridHeight = gridRows * (cardSize + cardSpacing) + sectionPadding * 2;
+    
+    // 実際のコンテンツ高さ + 画面高さ + 余裕分
+    return gridHeight + screenHeight + 300.0; // より正確な計算に基づく余裕分
   }
 
   /// カレンダーコンテンツの高さを計算
   double _calculateCalendarContentHeight() {
-    // カレンダーカード: height(150) + margin bottom(16)
-    const calendarCardHeight = 150.0 + 16.0;
+    // 実際の活動記録コンテンツは3つのカードで構成
+    // 1. カレンダー表示カード: padding(16*2) + content + margin bottom(16)
+    const calendarCardHeight = 32.0 + 300.0 + 16.0; // パディング + カレンダー推定高さ + マージン
     
-    // 活動一覧カード: height(150) + margin bottom(16)
-    const activityCardHeight = 150.0 + 16.0;
+    // 2. 統計情報カード: padding(16*2) + content + margin bottom(16)
+    const statisticsCardHeight = 32.0 + 120.0 + 16.0; // パディング + 統計情報推定高さ + マージン
     
-    return calendarCardHeight + activityCardHeight;
+    // 3. メモ一覧カード: padding(16*2) + content + margin bottom(16)
+    const memosCardHeight = 32.0 + 200.0 + 16.0; // パディング + メモ一覧推定高さ + マージン
+    
+    return calendarCardHeight + statisticsCardHeight + memosCardHeight;
   }
 
   /// ツールバーアニメーション（退場→登場）
@@ -212,8 +233,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     final currentScrollPosition = scrollController.offset;
     
     // 先にスクロール位置をカレンダー分だけ下にずらして、画面外に追加されるように調整
+    // jumpTo ではなく極短時間の animateTo で瞬間移動を回避
     if (scrollController.hasClients) {
-      scrollController.jumpTo(currentScrollPosition + calendarHeight);
+      await scrollController.animateTo(
+        currentScrollPosition + calendarHeight,
+        duration: const Duration(milliseconds: 1), // 極短時間で実質瞬間移動
+        curve: Curves.linear,
+      );
     }
     
     // スクロール位置調整後にカレンダーを追加（これで画面外に追加される）
