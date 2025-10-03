@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../services/hobby_storage.dart';
@@ -75,20 +77,6 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
               final title = _titleController.text.trim();
               final memo = _memoController.text.trim();
 
-              if (_selectedImage == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text("アイコン画像を選んでください"),
-                    backgroundColor: Colors.red[400],
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                );
-                return;
-              }
-
               if (title.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -103,7 +91,20 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
                 return;
               }
 
-              final savedImageFile = await HobbyStorageService.saveImageToLocalDirectory(_selectedImage!);
+              // 画像が選択されていない場合はデフォルト画像を使用
+              File imageFileToSave;
+              if (_selectedImage == null) {
+                // デフォルト画像をアセットからコピー
+                final tempDir = await getTemporaryDirectory();
+                final defaultImageBytes = await rootBundle.load('assets/images/default_hobby_icon.png');
+                final tempFile = File('${tempDir.path}/default_hobby_${const Uuid().v4()}.png');
+                await tempFile.writeAsBytes(defaultImageBytes.buffer.asUint8List());
+                imageFileToSave = tempFile;
+              } else {
+                imageFileToSave = _selectedImage!;
+              }
+
+              final savedImageFile = await HobbyStorageService.saveImageToLocalDirectory(imageFileToSave);
               final fileName = path.basename(savedImageFile.path);
               
               final now = DateTime.now();
@@ -204,7 +205,7 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              "アイコン画像",
+                              "アイコン画像（任意）",
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -213,7 +214,7 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "タップして写真を選択",
+                              "タップして写真を選択\n選択しない場合はデフォルトアイコンを使用",
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],

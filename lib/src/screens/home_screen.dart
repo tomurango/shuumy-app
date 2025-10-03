@@ -2824,7 +2824,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           else
             ...statistics.recentMemos.take(5).map((memo) =>
               Container(
-                width: double.infinity, // 横幅を最大に設定
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
