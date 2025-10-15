@@ -786,3 +786,129 @@ flutter build ios --release
 - **技術的負債解消**: リファクタリングにより保守性が大幅向上
 
 **リリース完了**: App Store での v1.1.2+1 公開成功。メンテナンスリリースとして安定性・パフォーマンス・UX改善を全ユーザーに提供開始。
+
+## Android版リリース準備開始 (2025-10-13)
+
+### 🎯 プロジェクト目標
+iOS版（v1.1.2+1）と同等の機能をAndroid版としてGoogle Playでリリース。
+
+### ✅ 完了した作業
+
+#### 開発者アカウント・環境設定
+- **Google Play開発者アカウント登録**: 完了（$25の1回払い、本人確認済み）
+- **アプリケーションID変更**: `com.example.shuumy` → `com.tomurango.shuumy`（iOS版に統一）
+- **Kotlinパッケージ移行**: `com/example/shuumy/` → `com/tomurango/shuumy/`
+
+#### リリース署名設定
+- **キーストア作成**: `upload-keystore.jks` 作成完了
+  - キーエイリアス: upload
+  - 有効期限: 10000日
+  - 保存場所: `~/upload-keystore.jks`
+- **署名設定ファイル**: `android/key.properties` 作成
+- **build.gradle.kts更新**:
+  - リリース署名設定追加
+  - インポート文追加（`java.util.Properties`, `java.io.FileInputStream`）
+
+#### ビルド成功
+- **AABファイル**: `app-release.aab` 作成成功（23.3MB）
+- **ビルドコマンド**: `flutter build appbundle --release`
+- **署名状態**: リリース用キーストアで正常に署名済み
+
+#### Google Play Console設定
+- **アプリ作成**: 「シューマイ」登録完了
+- **基本情報設定**:
+  - アプリ名: シューマイ
+  - デフォルト言語: 日本語（日本）
+  - カテゴリ: ライフスタイル
+  - 無料アプリ
+
+#### ストア掲載情報
+- **簡単な説明**: 作成済み（47文字）
+- **詳しい説明**: 作成済み（約770文字）
+- **スクリーンショット**: Pixel 2エミュレーターで撮影（1080x1920）
+  - Android Studio Device Manager使用
+  - Pixel_2_API_32 エミュレーター作成
+  - 複数画面のスクリーンショット撮影完了
+
+#### アプリコンテンツ設定
+- **アプリのアクセス権**: 「アクセス制限なし」を選択
+- **データの収集とセキュリティ**: 「いいえ」（ローカルストレージのみ）
+- **プライバシーポリシー**: https://tomurango.github.io/shuumy-app/privacy.html
+- **利用規約**: https://tomurango.github.io/shuumy-app/terms.html
+
+### ⚠️ 現在の課題
+
+#### Google Playの新ポリシー要件
+App内課金を含むアプリは、製品版リリース前に以下が必須：
+- **テスター人数**: 最低20人
+- **テスト期間**: 連続14日間
+- **テスト方法**: クローズドテストまたはオープンテスト
+
+#### 対応方法の検討中
+**Option A: クローズドテスト**
+- メールアドレスで20人を招待
+- 知人・友人 + SNS募集
+
+**Option B: オープンテスト**
+- 誰でもGoogle Playから参加可能
+- SNS告知のみでOK
+- より現実的な選択肢
+
+### 📋 残りのタスク
+
+#### テスト準備
+- [ ] テスト方法の決定（クローズド/オープン）
+- [ ] テスター募集用SNS告知文作成
+- [ ] 内部テストリリース作成
+- [ ] クローズド/オープンテストへの移行
+
+#### App内課金設定
+- [ ] Google Play Consoleでの商品登録（3プラン）
+  - 月額: ¥300
+  - 年額: ¥2,500
+  - 買い切り: ¥5,000
+- [ ] App内課金コードの動作確認
+
+#### テスト期間
+- [ ] 20人以上のテスター参加確認
+- [ ] 14日間のテスト実行
+- [ ] クラッシュレポート監視
+- [ ] フィードバック対応
+
+#### 製品版リリース
+- [ ] テスト完了後、製品版に昇格
+- [ ] 審査提出
+- [ ] 審査対応
+
+### 🔧 技術的メモ
+
+#### ビルド時の警告（無視可能）
+- **NDK version warning**: プラグインが新しいNDK要求（動作には影響なし）
+- **EGL Error**: エミュレーター特有のグラフィックス警告（実機では発生しない）
+- **In-App Purchase not available**: エミュレーターでは正常な挙動
+
+#### ファイル構成変更
+- `android/key.properties`: 追加（.gitignoreに登録済み）
+- `android/app/build.gradle.kts`: リリース署名設定追加
+- `android/app/src/main/kotlin/com/tomurango/shuumy/MainActivity.kt`: パッケージ変更
+
+### 📱 iOS版との対応
+
+| 項目 | iOS版 | Android版 |
+|------|-------|----------|
+| アプリ名 | シューマイ | シューマイ |
+| Bundle/Package ID | com.tomurango.shuumy | com.tomurango.shuumy |
+| バージョン | 1.1.2+1 | 1.1.2+1 |
+| 月額プラン | ¥300 | ¥300 |
+| 年額プラン | ¥2,500 | ¥2,500 |
+| 買い切り | ¥5,000 | ¥5,000 |
+| プライバシーポリシー | https://tomurango.github.io/shuumy-app/privacy.html | 同じ |
+| 利用規約 | https://tomurango.github.io/shuumy-app/terms.html | 同じ |
+
+### 🚀 次回作業時の確認事項
+
+1. **テスター募集方法の決定**: オープンテストが推奨
+2. **SNS告知の準備**: iOS版の実績をアピール
+3. **タイムライン策定**: テスト開始から製品版まで約3週間を想定
+
+**現在の状態**: Google Play Console設定完了、テスト方法の選択待ち

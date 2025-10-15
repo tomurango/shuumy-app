@@ -1,4 +1,4 @@
-package com.example.shuumy
+package com.tomurango.shuumy
 
 import io.flutter.embedding.android.FlutterActivity
 
