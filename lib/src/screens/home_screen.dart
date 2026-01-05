@@ -585,7 +585,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context, Hobby hobby, WidgetRef ref) {
+  void _showDeleteConfirmation(BuildContext context, Hobby hobby, WidgetRef? externalRef) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -658,9 +658,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              
-              // 関連するメモも削除
-              await _deleteHobbyWithMemos(hobby, ref);
+
+              // 関連するメモも削除（Stateのrefを使用）
+              await _deleteHobbyWithMemos(hobby);
               
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -694,16 +694,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     );
   }
 
-  Future<void> _deleteHobbyWithMemos(Hobby hobby, WidgetRef ref) async {
+  Future<void> _deleteHobbyWithMemos(Hobby hobby) async {
     try {
+      // Stateのrefからnotifierを取得
+      final notifier = ref.read(hobbyListProvider.notifier);
+
       // 関連するメモを削除
       final memos = await MemoService.loadMemosForHobby(hobby.id);
       for (final memo in memos) {
         await MemoService.deleteMemo(memo.id);
       }
-      
+
       // 趣味を削除
-      ref.read(hobbyListProvider.notifier).remove(hobby);
+      notifier.remove(hobby);
     } catch (e) {
       // エラーハンドリング
       if (mounted) {

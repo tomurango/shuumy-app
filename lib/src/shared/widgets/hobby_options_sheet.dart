@@ -147,7 +147,9 @@ class HobbyOptionsSheet extends StatelessWidget {
                       if (onDelete != null) {
                         onDelete!(context, hobby, ref);
                       } else {
-                        _showDeleteConfirmation(context, hobby, ref);
+                        // refを事前に取得してから削除確認ダイアログを表示
+                        final notifier = ref.read(hobbyListProvider.notifier);
+                        _showDeleteConfirmation(context, hobby, notifier);
                       }
                     },
                     isDestructive: true,
@@ -163,7 +165,7 @@ class HobbyOptionsSheet extends StatelessWidget {
     );
   }
 
-  static void _showDeleteConfirmation(BuildContext context, Hobby hobby, WidgetRef ref) {
+  static void _showDeleteConfirmation(BuildContext context, Hobby hobby, dynamic notifier) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -236,9 +238,9 @@ class HobbyOptionsSheet extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              
+
               // 関連するメモも削除
-              await _deleteHobbyWithMemos(hobby, ref);
+              await _deleteHobbyWithMemos(hobby, notifier);
               
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -272,16 +274,16 @@ class HobbyOptionsSheet extends StatelessWidget {
     );
   }
 
-  static Future<void> _deleteHobbyWithMemos(Hobby hobby, WidgetRef ref) async {
+  static Future<void> _deleteHobbyWithMemos(Hobby hobby, dynamic notifier) async {
     try {
       // 関連するメモを削除
       final memos = await MemoService.loadMemosForHobby(hobby.id);
       for (final memo in memos) {
         await MemoService.deleteMemo(memo.id);
       }
-      
-      // 趣味を削除
-      ref.read(hobbyListProvider.notifier).remove(hobby);
+
+      // 趣味を削除（事前に取得したnotifierを使用）
+      notifier.remove(hobby);
     } catch (e) {
       // エラーハンドリングは呼び出し側で行う
       rethrow;
