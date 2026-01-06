@@ -797,36 +797,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     child: Row(
                       children: [
                       // カテゴリ名表示 - Material Design 3準拠
-                      GestureDetector(
-                        onTap: () => _showCategoryDropdown(context),
-                        child: Material(
-                          elevation: 2.0, // MD3準拠のelevation
-                          color: Theme.of(context).colorScheme.surfaceContainer,
-                          borderRadius: BorderRadius.circular(20),
-                          clipBehavior: Clip.antiAlias,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.folder_outlined,
-                                color: Colors.grey[600],
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                categories.isNotEmpty && _currentPageIndex < categories.length
-                                    ? categories[_currentPageIndex].name
-                                    : 'カテゴリなし',
-                                style: const TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: GestureDetector(
+                          onTap: () => _showCategoryDropdown(context),
+                          child: Material(
+                            elevation: 2.0, // MD3準拠のelevation
+                            color: Theme.of(context).colorScheme.surfaceContainer,
+                            borderRadius: BorderRadius.circular(20),
+                            clipBehavior: Clip.antiAlias,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.folder_outlined,
+                                  color: Colors.grey[600],
+                                  size: 18,
                                 ),
-                              ),
-                            ],
-                          ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    categories.isNotEmpty && _currentPageIndex < categories.length
+                                        ? categories[_currentPageIndex].name
+                                        : 'カテゴリなし',
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            ),
                           ),
                         ),
                       ),
@@ -1254,6 +1260,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                               dirPath: dirPath,
                                               hobbiesInCategory: hobbiesInCategory,
                                               isReorderMode: _isReorderMode,
+                                              categoryId: category.id,
                                               onDelete: _showDeleteConfirmation,
                                             ),
                                           ),
@@ -1267,6 +1274,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                     dirPath: dirPath,
                                     hobbiesInCategory: hobbiesInCategory,
                                     isReorderMode: _isReorderMode,
+                                    categoryId: category.id,
                                     onDelete: _showDeleteConfirmation,
                                   ),
                             ),

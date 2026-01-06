@@ -13,6 +13,7 @@ class HobbyCardWidget extends ConsumerWidget {
   final String dirPath;
   final List<dynamic> hobbiesInCategory;
   final bool isReorderMode;
+  final String categoryId;  // カテゴリーIDを追加（Hero tag用）
   final Function(BuildContext, Hobby, WidgetRef)? onDelete;
 
   const HobbyCardWidget({
@@ -22,6 +23,7 @@ class HobbyCardWidget extends ConsumerWidget {
     required this.dirPath,
     required this.hobbiesInCategory,
     required this.isReorderMode,
+    required this.categoryId,
     this.onDelete,
   });
 
@@ -56,9 +58,9 @@ class HobbyCardWidget extends ConsumerWidget {
                   height: 100,
                   margin: const EdgeInsets.all(10),
                   child: Hero(
-                    tag: isReorderMode 
-                        ? 'hobby_image_reorder_${hobby.id}'  // リオーダーモード時は別のtagを使用
-                        : 'hobby_image_${hobby.id}',
+                    tag: isReorderMode
+                        ? 'hobby_image_reorder_${categoryId}_${hobby.id}'  // リオーダーモード時
+                        : 'hobby_image_${categoryId}_${hobby.id}',  // カテゴリーIDを含めて一意にする
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),

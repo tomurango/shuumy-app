@@ -43,10 +43,16 @@ class CategoryListNotifier extends StateNotifier<List<Category>> {
   /// カテゴリーを更新
   Future<void> updateCategory(Category updatedCategory) async {
     try {
-      await CategoryService.updateCategory(updatedCategory);
-      state = state.map((category) {
+      // stateを更新（並び替え順序を保持）
+      final updatedState = state.map((category) {
         return category.id == updatedCategory.id ? updatedCategory : category;
       }).toList();
+
+      // 更新後のstate全体をファイルに保存（順序を保持）
+      await CategoryService.saveCategories(updatedState);
+
+      // stateを更新
+      state = updatedState;
     } catch (e) {
       rethrow;
     }
@@ -65,8 +71,17 @@ class CategoryListNotifier extends StateNotifier<List<Category>> {
   /// カテゴリーの順序を変更
   Future<void> reorderCategories(List<Category> reorderedCategories) async {
     try {
-      await CategoryService.reorderCategories(reorderedCategories);
-      state = reorderedCategories;
+      // 新しいorder値を設定
+      final orderedCategories = <Category>[];
+      for (int i = 0; i < reorderedCategories.length; i++) {
+        orderedCategories.add(reorderedCategories[i].copyWith(order: i));
+      }
+
+      // ファイルに保存
+      await CategoryService.saveCategories(orderedCategories);
+
+      // stateを更新（新しいorder値を持つリスト）
+      state = orderedCategories;
     } catch (e) {
       rethrow;
     }

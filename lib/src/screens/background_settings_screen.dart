@@ -112,11 +112,10 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
         final categories = ref.read(categoryListProvider);
         final category = categories.firstWhere((c) => c.id == _selectedCategoryId);
         final updatedCategory = category.copyWith(backgroundImagePath: fileName);
-        await CategoryService.updateCategory(updatedCategory);
-        
-        // カテゴリプロバイダーを更新
-        ref.read(categoryListProvider.notifier).reload();
-        
+
+        // プロバイダー経由で更新（並び替え情報を保持）
+        await ref.read(categoryListProvider.notifier).updateCategory(updatedCategory);
+
         setState(() {
           _currentConfig = BackgroundImageConfig.custom(fileName);
         });
@@ -177,10 +176,9 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
         final categories = ref.read(categoryListProvider);
         final category = categories.firstWhere((c) => c.id == _selectedCategoryId);
         final updatedCategory = category.copyWith(backgroundImagePath: null);
-        await CategoryService.updateCategory(updatedCategory);
-        
-        // カテゴリプロバイダーを更新
-        ref.read(categoryListProvider.notifier).reload();
+
+        // プロバイダー経由で更新（並び替え情報を保持）
+        await ref.read(categoryListProvider.notifier).updateCategory(updatedCategory);
       } else {
         // グローバル背景をリセット
         await BackgroundImageService.resetToDefault();
