@@ -329,6 +329,14 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
           // ヘッダー（時間とメニューボタン）
           Row(
             children: [
+              if (memo.isPinned) ...[
+                Icon(
+                  Icons.push_pin,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+              ],
               Text(
                 _formatDateTime(memo.createdAt),
                 style: TextStyle(
@@ -344,13 +352,28 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
                   size: 20,
                 ),
                 onSelected: (value) {
-                  if (value == 'edit') {
+                  if (value == 'pin') {
+                    _togglePinMemo(memo);
+                  } else if (value == 'edit') {
                     _editMemo(memo);
                   } else if (value == 'delete') {
                     _deleteMemo(memo);
                   }
                 },
                 itemBuilder: (BuildContext context) => [
+                  PopupMenuItem<String>(
+                    value: 'pin',
+                    child: Row(
+                      children: [
+                        Icon(
+                          memo.isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(memo.isPinned ? 'ピン留め解除' : 'ピン留め'),
+                      ],
+                    ),
+                  ),
                   const PopupMenuItem<String>(
                     value: 'edit',
                     child: Row(
@@ -444,6 +467,21 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
   String _getFormattedDate() {
     final now = DateTime.now();
     return '${now.year}/${now.month}/${now.day}';
+  }
+
+  /// メモのピン留めを切り替え
+  Future<void> _togglePinMemo(HobbyMemo memo) async {
+    await MemoService.togglePinMemo(memo.id);
+    await _loadMemos(); // メモリストを再読み込み
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(memo.isPinned ? 'ピン留めを解除しました' : 'ピン留めしました'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   /// メモを削除

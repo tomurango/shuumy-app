@@ -26,8 +26,16 @@ class MemoService {
 
   static Future<List<HobbyMemo>> loadMemosForHobby(String hobbyId) async {
     final allMemos = await loadMemos();
-    return allMemos.where((memo) => memo.hobbyId == hobbyId).toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt)); // 新しい順
+    final hobbyMemos = allMemos.where((memo) => memo.hobbyId == hobbyId).toList();
+
+    // ピン留めメモを先に、その後は作成日時の新しい順にソート
+    hobbyMemos.sort((a, b) {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    return hobbyMemos;
   }
 
   static Future<void> saveMemos(List<HobbyMemo> memos) async {
@@ -55,6 +63,15 @@ class MemoService {
     final memos = await loadMemos();
     memos.removeWhere((m) => m.id == memoId);
     await saveMemos(memos);
+  }
+
+  static Future<void> togglePinMemo(String memoId) async {
+    final memos = await loadMemos();
+    final index = memos.indexWhere((m) => m.id == memoId);
+    if (index != -1) {
+      memos[index] = memos[index].copyWith(isPinned: !memos[index].isPinned);
+      await saveMemos(memos);
+    }
   }
 
   static Future<int> getMemoCountForHobby(String hobbyId) async {

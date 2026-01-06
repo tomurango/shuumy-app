@@ -7,6 +7,7 @@ class HobbyMemo {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final String? imageFileName;
+  final bool isPinned;
 
   HobbyMemo({
     required this.id,
@@ -15,6 +16,7 @@ class HobbyMemo {
     required this.createdAt,
     this.updatedAt,
     this.imageFileName,
+    this.isPinned = false,
   });
 
   String? getImagePath(String basePath) {
@@ -29,6 +31,7 @@ class HobbyMemo {
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt?.toIso8601String(),
     'imageFileName': imageFileName,
+    'isPinned': isPinned,
   };
 
   factory HobbyMemo.fromJson(Map<String, dynamic> json) => HobbyMemo(
@@ -36,10 +39,11 @@ class HobbyMemo {
     hobbyId: json['hobbyId'] as String,
     content: json['content'] as String,
     createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: json['updatedAt'] != null 
-        ? DateTime.parse(json['updatedAt'] as String) 
+    updatedAt: json['updatedAt'] != null
+        ? DateTime.parse(json['updatedAt'] as String)
         : null,
     imageFileName: json['imageFileName'] as String?,
+    isPinned: json['isPinned'] as bool? ?? false,
   );
 
   HobbyMemo copyWith({
@@ -49,6 +53,7 @@ class HobbyMemo {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? imageFileName,
+    bool? isPinned,
   }) {
     return HobbyMemo(
       id: id ?? this.id,
@@ -57,6 +62,7 @@ class HobbyMemo {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       imageFileName: imageFileName ?? this.imageFileName,
+      isPinned: isPinned ?? this.isPinned,
     );
   }
 }
