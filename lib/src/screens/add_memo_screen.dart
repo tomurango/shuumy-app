@@ -140,7 +140,7 @@ class _AddMemoScreenState extends State<AddMemoScreen> {
                     ),
                   )
                 : const Text(
-                    '投稿',
+                    '保存',
                     style: TextStyle(
                       color: Color(0xFF1DA1F2),
                       fontSize: 16,

@@ -314,7 +314,7 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
 
   Widget _buildMemoItem(HobbyMemo memo) {
     return Container(
-      padding: const EdgeInsets.only(left: 0, right: 16, top: 12, bottom: 12),
+      padding: const EdgeInsets.only(left: 0, right: 0, top: 12, bottom: 12),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
