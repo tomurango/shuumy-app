@@ -9,6 +9,7 @@ import '../services/data_reset_service.dart';
 import 'background_settings_screen.dart';
 import 'category_management_screen.dart';
 import 'premium_plan_selection_screen.dart';
+import 'activity_record_screen.dart';
 import '../providers/premium_provider.dart';
 import '../services/premium_service.dart';
 
@@ -172,9 +173,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 
                 // カテゴリー管理
                 _buildCategoryManagementItem(),
-                
+
                 _buildDivider(),
-                
+
+                // 活動記録
+                _buildSettingItem(
+                  icon: Icons.calendar_month,
+                  title: '活動記録',
+                  subtitle: 'カレンダーで振り返る',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ActivityRecordScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                _buildDivider(),
+
                 // プレミアム機能案内
                 _buildPremiumSection(),
                 
