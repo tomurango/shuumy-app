@@ -17,12 +17,12 @@ class Category {
     required this.updatedAt,
   });
 
-  /// デフォルト「すべて」カテゴリーを作成
+  /// デフォルト「マイ趣味」カテゴリーを作成
   factory Category.defaultCategory() {
     final now = DateTime.now();
     return Category(
       id: 'default_all',
-      name: 'すべて',
+      name: 'マイ趣味',
       order: 0,
       createdAt: now,
       updatedAt: now,

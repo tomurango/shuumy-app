@@ -27,7 +27,8 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
   @override
   void initState() {
     super.initState();
-    _selectedCategoryId = widget.initialCategoryId;
+    // 初期カテゴリーが指定されていない場合は「マイ趣味」をデフォルトに
+    _selectedCategoryId = widget.initialCategoryId ?? 'default_all';
     _loadCurrentConfig();
   }
 
@@ -39,34 +40,29 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
     try {
       BackgroundImageConfig config;
       
-      if (_selectedCategoryId != null) {
-        // カテゴリ別背景を読み込み
-        final categories = ref.read(categoryListProvider);
-        final category = categories.firstWhere(
-          (c) => c.id == _selectedCategoryId,
-          orElse: () => throw Exception('カテゴリが見つかりません'),
-        );
-        
-        if (category.backgroundImagePath != null) {
-          // カテゴリ専用背景があるかチェック
-          final backgroundFile = await CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!);
-          
-          if (backgroundFile != null) {
-            config = BackgroundImageConfig(
-              type: BackgroundType.custom,
-              customFileName: category.backgroundImagePath,
-            );
-          } else {
-            // カテゴリ専用背景がない場合はグローバル背景を表示
-            config = await BackgroundImageService.getCurrentConfig();
-          }
+      // カテゴリ別背景を読み込み
+      final categories = ref.read(categoryListProvider);
+      final category = categories.firstWhere(
+        (c) => c.id == _selectedCategoryId,
+        orElse: () => throw Exception('カテゴリが見つかりません'),
+      );
+
+      if (category.backgroundImagePath != null) {
+        // カテゴリ専用背景があるかチェック
+        final backgroundFile = await CategoryService.getCategoryBackgroundFile(category.backgroundImagePath!);
+
+        if (backgroundFile != null) {
+          config = BackgroundImageConfig(
+            type: BackgroundType.custom,
+            customFileName: category.backgroundImagePath,
+          );
         } else {
-          // カテゴリ専用背景が設定されていない場合はグローバル背景を表示
-          config = await BackgroundImageService.getCurrentConfig();
+          // 背景ファイルが見つからない場合はデフォルト（白背景）
+          config = BackgroundImageConfig.defaultConfig();
         }
       } else {
-        // グローバル背景を読み込み
-        config = await BackgroundImageService.getCurrentConfig();
+        // 背景が設定されていない場合はデフォルト（白背景）
+        config = BackgroundImageConfig.defaultConfig();
       }
       
       setState(() {
@@ -490,7 +486,7 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
   Widget _buildCategorySelector() {
     final categories = ref.watch(categoryListProvider);
     final isPremium = ref.watch(premiumProvider);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -502,62 +498,91 @@ class _BackgroundSettingsScreenState extends ConsumerState<BackgroundSettingsScr
             color: Colors.black,
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
-        // すべてのカテゴリ
-        _buildCategoryOption(
-          title: 'すべて',
-          subtitle: 'グローバル背景として設定',
-          categoryId: null,
-          icon: Icons.apps,
-        ),
-        
-        // 個別カテゴリ（プレミアムのみ）
-        if (isPremium && categories.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          const Divider(),
-          const SizedBox(height: 8),
-          
-          ...categories.map((category) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _buildCategoryOption(
-              title: category.name,
-              subtitle: 'このカテゴリのみの背景として設定',
-              categoryId: category.id,
-              icon: Icons.folder_outlined,
-            ),
-          )),
-        ] else if (!isPremium && categories.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          const Divider(),
-          const SizedBox(height: 8),
-          
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.lock, color: Colors.grey[600], size: 20),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'カテゴリ別背景はプレミアム機能です',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
+
+        // カテゴリー一覧
+        if (categories.isNotEmpty) ...[
+          ...categories.map((category) {
+            // 無料版は「マイ趣味」(default_all)のみ設定可能
+            final isLocked = !isPremium && category.id != 'default_all';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: isLocked
+                  ? _buildLockedCategoryOption(
+                      title: category.name,
+                      icon: Icons.folder_outlined,
+                    )
+                  : _buildCategoryOption(
+                      title: category.name,
+                      subtitle: 'このカテゴリの背景を設定',
+                      categoryId: category.id,
+                      icon: Icons.folder_outlined,
+                    ),
+            );
+          }),
+
+          // 無料版でカテゴリーが複数ある場合のプレミアム案内
+          if (!isPremium && categories.length > 1) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.lock, color: Colors.grey[600], size: 20),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      '他のカテゴリの背景設定はプレミアム機能です',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ],
+    );
+  }
+
+  /// ロックされたカテゴリオプション
+  Widget _buildLockedCategoryOption({
+    required String title,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey[400], size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[500],
+              ),
+            ),
+          ),
+          Icon(Icons.lock, color: Colors.grey[400], size: 20),
+        ],
+      ),
     );
   }
 

@@ -454,7 +454,7 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      'このカテゴリーの趣味は「すべて」カテゴリーに移動されます。',
+                      'このカテゴリーの趣味は「マイ趣味」カテゴリーに移動されます。',
                       style: TextStyle(
                         fontSize: 12,
                       ),
@@ -481,7 +481,7 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
               Navigator.pop(context);
               
               try {
-                // カテゴリーに属する趣味を「すべて」カテゴリーに移動
+                // カテゴリーに属する趣味を「マイ趣味」カテゴリーに移動
                 await _moveHobbiesToDefaultCategory(category.id);
                 
                 // カテゴリーを削除

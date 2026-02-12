@@ -10,6 +10,7 @@ import 'background_settings_screen.dart';
 import 'category_management_screen.dart';
 import 'premium_plan_selection_screen.dart';
 import 'activity_record_screen.dart';
+import 'tree_diagram_screen.dart';
 import '../providers/premium_provider.dart';
 import '../services/premium_service.dart';
 
@@ -186,6 +187,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => const ActivityRecordScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                _buildDivider(),
+
+                // 樹形図
+                _buildSettingItem(
+                  icon: Icons.account_tree,
+                  title: '樹形図',
+                  subtitle: '趣味の階層構造を管理',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TreeDiagramScreen(),
                       ),
                     );
                   },

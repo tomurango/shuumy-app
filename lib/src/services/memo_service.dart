@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../models/hobby_memo.dart';
+import 'tree_node_service.dart';
 
 class MemoService {
   static const _fileName = 'memos.json';
@@ -76,6 +77,61 @@ class MemoService {
 
   static Future<int> getMemoCountForHobby(String hobbyId) async {
     final memos = await loadMemosForHobby(hobbyId);
+    return memos.length;
+  }
+
+  /// ノードIDでメモを取得（カスタムノード用）
+  static Future<List<HobbyMemo>> loadMemosForNode(String nodeId) async {
+    final allMemos = await loadMemos();
+    final nodeMemos = allMemos.where((memo) => memo.nodeId == nodeId).toList();
+
+    // ピン留めメモを先に、その後は作成日時の新しい順にソート
+    nodeMemos.sort((a, b) {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    return nodeMemos;
+  }
+
+  /// ノードのメモ数を取得
+  static Future<int> getMemoCountForNode(String nodeId) async {
+    final memos = await loadMemosForNode(nodeId);
+    return memos.length;
+  }
+
+  /// 趣味とその子ノードすべてのメモを取得
+  static Future<List<HobbyMemo>> loadMemosForHobbyWithDescendants(String hobbyId) async {
+    final allMemos = await loadMemos();
+
+    // 趣味自体のメモ
+    final hobbyMemos = allMemos.where((memo) => memo.hobbyId == hobbyId).toList();
+
+    // 子孫ノードのIDを取得
+    final descendantNodeIds = await TreeNodeService.getAllDescendantNodeIds(hobbyId);
+
+    // 子孫ノードのメモ
+    final nodeMemos = allMemos.where((memo) =>
+      memo.nodeId != null && descendantNodeIds.contains(memo.nodeId)
+    ).toList();
+
+    // 統合
+    final combinedMemos = [...hobbyMemos, ...nodeMemos];
+
+    // ピン留めメモを先に、その後は作成日時の新しい順にソート
+    combinedMemos.sort((a, b) {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    return combinedMemos;
+  }
+
+  /// 趣味とその子ノードすべてのメモ数を取得
+  static Future<int> getMemoCountForHobbyWithDescendants(String hobbyId) async {
+    final memos = await loadMemosForHobbyWithDescendants(hobbyId);
     return memos.length;
   }
 }

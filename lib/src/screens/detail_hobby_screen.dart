@@ -5,7 +5,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../models/hobby.dart';
 import '../models/hobby_memo.dart';
+import '../models/tree_node.dart';
 import '../services/memo_service.dart';
+import '../services/tree_node_service.dart';
 import 'edit_hobby_screen.dart';
 import 'add_memo_screen.dart';
 import 'edit_memo_screen.dart';
@@ -23,6 +25,7 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
   File? _imageFile;
   int _memoCount = 0;
   List<HobbyMemo> _memos = [];
+  Map<String, TreeNode> _nodeMap = {}; // ノードIDからノード情報へのマップ
 
   @override
   void initState() {
@@ -43,11 +46,21 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
   }
 
   Future<void> _loadMemos() async {
-    final memos = await MemoService.loadMemosForHobby(widget.hobby.id);
+    // 趣味とその子ノードすべてのメモを取得
+    final memos = await MemoService.loadMemosForHobbyWithDescendants(widget.hobby.id);
     final count = memos.length;
+
+    // ノード情報を取得（メモの出所を表示するため）
+    final allNodes = await TreeNodeService.loadAllNodes();
+    final nodeMap = <String, TreeNode>{};
+    for (final node in allNodes) {
+      nodeMap[node.id] = node;
+    }
+
     setState(() {
       _memos = memos;
       _memoCount = count;
+      _nodeMap = nodeMap;
     });
   }
 
@@ -336,6 +349,26 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 6),
+              ],
+              // カスタムノードからのメモにはノード名を表示
+              if (memo.nodeId != null && _nodeMap.containsKey(memo.nodeId)) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Text(
+                    _nodeMap[memo.nodeId]!.title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange.shade800,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
               ],
               Text(
                 _formatDateTime(memo.createdAt),

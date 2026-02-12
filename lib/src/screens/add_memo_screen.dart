@@ -9,9 +9,19 @@ import '../services/hobby_storage.dart';
 import '../services/memo_service.dart';
 
 class AddMemoScreen extends StatefulWidget {
-  final Hobby hobby;
-  
-  const AddMemoScreen({super.key, required this.hobby});
+  final Hobby? hobby;
+  final String? nodeId;
+  final String? nodeTitle;
+  final String? hobbyId; // 趣味ノードからの呼び出し用
+
+  const AddMemoScreen({
+    super.key,
+    this.hobby,
+    this.nodeId,
+    this.nodeTitle,
+    this.hobbyId,
+  }) : assert(hobby != null || hobbyId != null || (nodeId != null && nodeTitle != null),
+         'Either hobby, hobbyId, or (nodeId and nodeTitle) must be provided');
 
   @override
   State<AddMemoScreen> createState() => _AddMemoScreenState();
@@ -71,10 +81,11 @@ class _AddMemoScreenState extends State<AddMemoScreen> {
 
       final memo = HobbyMemo(
         id: const Uuid().v4(),
-        hobbyId: widget.hobby.id,
+        hobbyId: widget.hobby?.id ?? widget.hobbyId ?? '',
         content: content,
         createdAt: DateTime.now(),
         imageFileName: imageFileName,
+        nodeId: widget.nodeId,
       );
 
       await MemoService.addMemo(memo);
@@ -120,7 +131,7 @@ class _AddMemoScreenState extends State<AddMemoScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          '${widget.hobby.title}のメモ',
+          '${widget.hobby?.title ?? widget.nodeTitle}のメモ',
           style: const TextStyle(
             color: Colors.black,
             fontSize: 18,

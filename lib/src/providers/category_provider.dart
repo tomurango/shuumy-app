@@ -110,14 +110,10 @@ final selectedCategoryProvider = StateProvider<String>((ref) {
 /// 特定カテゴリーの趣味のみを取得するProvider
 final hobbiesByCategoryProvider = Provider.family<List<dynamic>, String>((ref, categoryId) {
   final allHobbies = ref.watch(hobbyListProvider);
-  
-  List<dynamic> filteredHobbies;
-  if (categoryId == 'default_all') {
-    filteredHobbies = allHobbies; // 「すべて」の場合は全趣味を返す
-  } else {
-    filteredHobbies = allHobbies.where((hobby) => hobby.categoryId == categoryId).toList();
-  }
-  
+
+  // 各カテゴリーに属する趣味のみを返す（マイ趣味も同様）
+  List<dynamic> filteredHobbies = allHobbies.where((hobby) => hobby.categoryId == categoryId).toList();
+
   // order順でソート
   filteredHobbies.sort((a, b) => a.order.compareTo(b.order));
   return filteredHobbies;

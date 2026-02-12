@@ -9,12 +9,12 @@ import '../models/hobby.dart';
 import '../models/category.dart';
 import '../providers/hobby_list_provider.dart';
 import '../providers/category_provider.dart';
-import '../services/background_image_service.dart';
 import '../services/category_service.dart';
 import '../services/memo_service.dart';
 import 'add_hobby_screen.dart';
 import 'edit_hobby_screen.dart';
 import 'settings_screen.dart';
+import 'tree_diagram_screen.dart';
 import 'home/widgets/hobby_card_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -155,13 +155,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           return FileImage(file);
         }
       }
-      
-      // カテゴリー専用背景がない場合は、グローバル背景を使用
-      final config = await BackgroundImageService.getCurrentConfig();
-      if (config.type == BackgroundType.custom) {
-        return await config.getImageProvider();
-      }
-      
+
       return null; // 白背景
     } catch (e) {
       return null; // エラーの場合は白背景
@@ -1236,6 +1230,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         },
         isAccent: true,
         isPill: true,
+      ),
+
+      // 樹形図
+      _buildToolbarButton(
+        icon: Icons.account_tree,
+        onPressed: () {
+          final categories = ref.read(categoryListProvider);
+          final currentCategoryId = categories.isNotEmpty && _currentPageIndex < categories.length
+              ? categories[_currentPageIndex].id
+              : null;
+          final initialCategoryId = currentCategoryId != 'default_all' ? currentCategoryId : null;
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TreeDiagramScreen(
+                initialCategoryId: initialCategoryId,
+              ),
+            ),
+          );
+        },
       ),
 
       // 設定

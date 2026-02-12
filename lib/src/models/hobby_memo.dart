@@ -8,6 +8,7 @@ class HobbyMemo {
   final DateTime? updatedAt;
   final String? imageFileName;
   final bool isPinned;
+  final String? nodeId; // 樹形図ノードID（カスタムノード用）
 
   HobbyMemo({
     required this.id,
@@ -17,6 +18,7 @@ class HobbyMemo {
     this.updatedAt,
     this.imageFileName,
     this.isPinned = false,
+    this.nodeId,
   });
 
   String? getImagePath(String basePath) {
@@ -32,6 +34,7 @@ class HobbyMemo {
     'updatedAt': updatedAt?.toIso8601String(),
     'imageFileName': imageFileName,
     'isPinned': isPinned,
+    'nodeId': nodeId,
   };
 
   factory HobbyMemo.fromJson(Map<String, dynamic> json) => HobbyMemo(
@@ -44,6 +47,7 @@ class HobbyMemo {
         : null,
     imageFileName: json['imageFileName'] as String?,
     isPinned: json['isPinned'] as bool? ?? false,
+    nodeId: json['nodeId'] as String?,
   );
 
   HobbyMemo copyWith({
@@ -54,6 +58,7 @@ class HobbyMemo {
     DateTime? updatedAt,
     String? imageFileName,
     bool? isPinned,
+    String? nodeId,
   }) {
     return HobbyMemo(
       id: id ?? this.id,
@@ -63,6 +68,7 @@ class HobbyMemo {
       updatedAt: updatedAt ?? this.updatedAt,
       imageFileName: imageFileName ?? this.imageFileName,
       isPinned: isPinned ?? this.isPinned,
+      nodeId: nodeId ?? this.nodeId,
     );
   }
 }
