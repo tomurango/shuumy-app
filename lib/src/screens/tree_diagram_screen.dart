@@ -17,8 +17,29 @@ const int maxNodeDepth = 10;
 /// 展開状態プロバイダー
 final expandedNodesProvider = StateProvider<Set<String>>((ref) => <String>{});
 
+/// 選択中のノード情報
+class SelectedNodeInfo {
+  final String nodeId;
+  final String nodeType; // 'root' | 'category' | 'hobby' | 'custom'
+  final String? hobbyId; // 趣味IDまたはカスタムノードが属する趣味ID
+  final String? parentNodeId; // カスタムノードの親ノードID
+  final int depth; // 現在の階層
+
+  const SelectedNodeInfo({
+    required this.nodeId,
+    required this.nodeType,
+    this.hobbyId,
+    this.parentNodeId,
+    required this.depth,
+  });
+
+  /// 子ノードを追加可能か
+  bool get canAddChild =>
+      (nodeType == 'hobby' || nodeType == 'custom') && depth < maxNodeDepth;
+}
+
 /// 選択中のノードプロバイダー
-final selectedNodeProvider = StateProvider<String?>((ref) => null);
+final selectedNodeProvider = StateProvider<SelectedNodeInfo?>((ref) => null);
 
 /// 樹形図画面
 class TreeDiagramScreen extends ConsumerStatefulWidget {
@@ -58,11 +79,32 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
   Widget build(BuildContext context) {
     final categories = ref.watch(categoryListProvider);
     final hobbies = ref.watch(hobbyListProvider);
+    final selectedNode = ref.watch(selectedNodeProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('樹形図'),
         backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+        actions: [
+          // ノード追加ボタン
+          IconButton(
+            onPressed: selectedNode != null && selectedNode.canAddChild
+                ? () => _showAddNodeDialog(
+                      selectedNode.hobbyId!,
+                      selectedNode.nodeType == 'custom' ? selectedNode.nodeId : null,
+                    )
+                : null,
+            icon: Icon(
+              Icons.add_circle_outline,
+              color: selectedNode != null && selectedNode.canAddChild
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.grey.shade400,
+            ),
+            tooltip: selectedNode != null && selectedNode.canAddChild
+                ? 'ノードを追加'
+                : '趣味またはノードを選択してください',
+          ),
+        ],
       ),
       body: categories.isEmpty
           ? const Center(child: CircularProgressIndicator())
@@ -93,6 +135,7 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
           isExpanded: isExpanded,
           canExpand: true,
           onTap: () => _toggleExpand('root'),
+          nodeType: 'root',
         ),
         if (isExpanded)
           ...categories.map((category) => _buildCategoryNode(category, hobbies, 1)),
@@ -118,6 +161,7 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
           isExpanded: isExpanded,
           canExpand: categoryHobbies.isNotEmpty,
           onTap: () => _toggleExpand(nodeId),
+          nodeType: 'category',
         ),
         if (isExpanded)
           ...categoryHobbies.map((hobby) => _buildHobbyNode(hobby, depth + 1)),
@@ -141,8 +185,10 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
           icon: _buildHobbyIcon(),
           depth: depth,
           isExpanded: isExpanded,
-          canExpand: true, // 常に展開可能（ノード追加のため）
+          canExpand: hasChildren, // 子がある場合のみ展開可能
           onTap: () => _toggleExpand(nodeId),
+          nodeType: 'hobby',
+          hobbyId: hobby.id,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -161,19 +207,15 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
             ],
           ),
         ),
-        if (isExpanded) ...[
+        if (isExpanded)
           // 子ノード
-          ...hobby.children.map((node) => _buildCustomNode(hobby.id, node, depth + 1)),
-          // ノード追加ボタン
-          if (depth + 1 < maxNodeDepth)
-            _buildAddNodeButton(depth + 1, () => _showAddNodeDialog(hobby.id, null)),
-        ],
+          ...hobby.children.map((node) => _buildCustomNode(hobby.id, node, depth + 1, null)),
       ],
     );
   }
 
   /// カスタムノードを構築
-  Widget _buildCustomNode(String hobbyId, HobbyNode node, int depth) {
+  Widget _buildCustomNode(String hobbyId, HobbyNode node, int depth, String? parentNodeId) {
     final expandedNodes = ref.watch(expandedNodesProvider);
     final isExpanded = expandedNodes.contains(node.id);
     final hasChildren = node.children.isNotEmpty;
@@ -188,8 +230,11 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
           icon: _buildCustomNodeIcon(),
           depth: depth,
           isExpanded: isExpanded,
-          canExpand: true, // 常に展開可能
+          canExpand: hasChildren, // 子がある場合のみ展開可能
           onTap: () => _toggleExpand(node.id),
+          nodeType: 'custom',
+          hobbyId: hobbyId,
+          parentNodeId: parentNodeId,
           onLongPress: () => _showNodeOptions(hobbyId, node),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -209,13 +254,9 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
             ],
           ),
         ),
-        if (isExpanded) ...[
-          // 子ノード
-          ...node.children.map((child) => _buildCustomNode(hobbyId, child, depth + 1)),
-          // ノード追加ボタン
-          if (depth + 1 < maxNodeDepth)
-            _buildAddNodeButton(depth + 1, () => _showAddNodeDialog(hobbyId, node.id)),
-        ],
+        if (isExpanded)
+          // 子ノード（このノードを親として渡す）
+          ...node.children.map((child) => _buildCustomNode(hobbyId, child, depth + 1, node.id)),
       ],
     );
   }
@@ -230,17 +271,26 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
     required bool isExpanded,
     required bool canExpand,
     required VoidCallback onTap,
+    required String nodeType,
+    String? hobbyId,
+    String? parentNodeId,
     VoidCallback? onLongPress,
     Widget? trailing,
   }) {
     final selectedNode = ref.watch(selectedNodeProvider);
-    final isSelected = selectedNode == id;
+    final isSelected = selectedNode?.nodeId == id;
 
     return Padding(
       padding: EdgeInsets.only(left: depth * 24.0),
       child: InkWell(
         onTap: () {
-          ref.read(selectedNodeProvider.notifier).state = id;
+          ref.read(selectedNodeProvider.notifier).state = SelectedNodeInfo(
+            nodeId: id,
+            nodeType: nodeType,
+            hobbyId: hobbyId,
+            parentNodeId: parentNodeId,
+            depth: depth,
+          );
           if (canExpand) onTap();
         },
         onLongPress: onLongPress,
@@ -305,21 +355,6 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
               if (trailing != null) trailing,
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  /// ノード追加ボタンを構築
-  Widget _buildAddNodeButton(int depth, VoidCallback onPressed) {
-    return Padding(
-      padding: EdgeInsets.only(left: depth * 24.0),
-      child: TextButton.icon(
-        onPressed: onPressed,
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text('ノードを追加'),
-        style: TextButton.styleFrom(
-          foregroundColor: Theme.of(context).colorScheme.primary,
         ),
       ),
     );
