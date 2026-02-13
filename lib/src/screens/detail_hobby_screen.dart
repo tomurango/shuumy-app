@@ -5,9 +5,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../models/hobby.dart';
 import '../models/hobby_memo.dart';
-import '../models/tree_node.dart';
+import '../models/hobby_node.dart';
 import '../services/memo_service.dart';
-import '../services/tree_node_service.dart';
 import 'edit_hobby_screen.dart';
 import 'add_memo_screen.dart';
 import 'edit_memo_screen.dart';
@@ -25,7 +24,7 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
   File? _imageFile;
   int _memoCount = 0;
   List<HobbyMemo> _memos = [];
-  Map<String, TreeNode> _nodeMap = {}; // ノードIDからノード情報へのマップ
+  Map<String, HobbyNode> _nodeMap = {}; // ノードIDからノード情報へのマップ
 
   @override
   void initState() {
@@ -47,21 +46,28 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
 
   Future<void> _loadMemos() async {
     // 趣味とその子ノードすべてのメモを取得
-    final memos = await MemoService.loadMemosForHobbyWithDescendants(widget.hobby.id);
+    final memos = await MemoService.loadMemosForHobbyWithDescendants(widget.hobby);
     final count = memos.length;
 
     // ノード情報を取得（メモの出所を表示するため）
-    final allNodes = await TreeNodeService.loadAllNodes();
-    final nodeMap = <String, TreeNode>{};
-    for (final node in allNodes) {
-      nodeMap[node.id] = node;
-    }
+    final nodeMap = <String, HobbyNode>{};
+    _buildNodeMap(widget.hobby.children, nodeMap);
 
     setState(() {
       _memos = memos;
       _memoCount = count;
       _nodeMap = nodeMap;
     });
+  }
+
+  /// 子ノードのマップを再帰的に構築
+  void _buildNodeMap(List<HobbyNode> nodes, Map<String, HobbyNode> nodeMap) {
+    for (final node in nodes) {
+      nodeMap[node.id] = node;
+      if (node.children.isNotEmpty) {
+        _buildNodeMap(node.children, nodeMap);
+      }
+    }
   }
 
   @override

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import '../models/hobby.dart';
 import '../models/hobby_memo.dart';
-import 'tree_node_service.dart';
 
 class MemoService {
   static const _fileName = 'memos.json';
@@ -102,14 +102,14 @@ class MemoService {
   }
 
   /// 趣味とその子ノードすべてのメモを取得
-  static Future<List<HobbyMemo>> loadMemosForHobbyWithDescendants(String hobbyId) async {
+  static Future<List<HobbyMemo>> loadMemosForHobbyWithDescendants(Hobby hobby) async {
     final allMemos = await loadMemos();
 
     // 趣味自体のメモ
-    final hobbyMemos = allMemos.where((memo) => memo.hobbyId == hobbyId).toList();
+    final hobbyMemos = allMemos.where((memo) => memo.hobbyId == hobby.id).toList();
 
     // 子孫ノードのIDを取得
-    final descendantNodeIds = await TreeNodeService.getAllDescendantNodeIds(hobbyId);
+    final descendantNodeIds = hobby.getAllDescendantNodeIds();
 
     // 子孫ノードのメモ
     final nodeMemos = allMemos.where((memo) =>
@@ -130,8 +130,8 @@ class MemoService {
   }
 
   /// 趣味とその子ノードすべてのメモ数を取得
-  static Future<int> getMemoCountForHobbyWithDescendants(String hobbyId) async {
-    final memos = await loadMemosForHobbyWithDescendants(hobbyId);
+  static Future<int> getMemoCountForHobbyWithDescendants(Hobby hobby) async {
+    final memos = await loadMemosForHobbyWithDescendants(hobby);
     return memos.length;
   }
 }

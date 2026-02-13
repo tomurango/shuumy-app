@@ -2,12 +2,23 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
-import '../models/tree_node.dart';
+import '../models/hobby.dart';
+import '../models/hobby_node.dart';
 import '../models/hobby_memo.dart';
-import '../providers/tree_node_provider.dart';
-import '../services/tree_node_service.dart';
+import '../models/category.dart';
+import '../providers/hobby_list_provider.dart';
+import '../providers/category_provider.dart';
 import '../services/memo_service.dart';
 import 'add_memo_screen.dart';
+
+/// 最大階層数
+const int maxNodeDepth = 10;
+
+/// 展開状態プロバイダー
+final expandedNodesProvider = StateProvider<Set<String>>((ref) => <String>{});
+
+/// 選択中のノードプロバイダー
+final selectedNodeProvider = StateProvider<String?>((ref) => null);
 
 /// 樹形図画面
 class TreeDiagramScreen extends ConsumerStatefulWidget {
@@ -28,10 +39,11 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
   @override
   void initState() {
     super.initState();
-    // 初期カテゴリーが指定されている場合、そのノードまで展開
     if (widget.initialCategoryId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _expandToCategory(widget.initialCategoryId!);
+        // 初期カテゴリーを展開
+        final expandedNodes = ref.read(expandedNodesProvider.notifier);
+        expandedNodes.state = {...expandedNodes.state, 'root', 'category_${widget.initialCategoryId}'};
       });
     }
   }
@@ -42,282 +54,349 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
     super.dispose();
   }
 
-  /// 指定カテゴリーまで展開
-  void _expandToCategory(String categoryId) {
-    final nodes = ref.read(treeNodeListProvider);
-    if (nodes.isEmpty) return; // ノードがまだロードされていない場合は何もしない
-
-    final expandedNodes = ref.read(expandedNodesProvider.notifier);
-
-    // ルートノードを展開
-    final rootNode = nodes.where((n) => n.type == NodeType.root).firstOrNull;
-    if (rootNode != null) {
-      expandedNodes.state = {...expandedNodes.state, rootNode.id};
-    }
-
-    // カテゴリーノードを選択状態に
-    final categoryNodeId = 'category_$categoryId';
-    ref.read(selectedNodeProvider.notifier).state = categoryNodeId;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final nodes = ref.watch(treeNodeListProvider);
-    final rootNode = nodes.firstWhere(
-      (n) => n.type == NodeType.root,
-      orElse: () => TreeNode.createRoot(),
-    );
+    final categories = ref.watch(categoryListProvider);
+    final hobbies = ref.watch(hobbyListProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('樹形図'),
         backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
       ),
-      body: nodes.isEmpty
+      body: categories.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
               children: [
-                _buildTreeNode(rootNode, 0),
+                // ルートノード
+                _buildRootNode(categories, hobbies),
               ],
             ),
     );
   }
 
-  /// ツリーノードを再帰的に構築
-  Widget _buildTreeNode(TreeNode node, int depth) {
+  /// ルートノードを構築
+  Widget _buildRootNode(List<Category> categories, List<Hobby> hobbies) {
     final expandedNodes = ref.watch(expandedNodesProvider);
-    final selectedNode = ref.watch(selectedNodeProvider);
-    final children = ref.read(treeNodeListProvider.notifier).getChildren(node.id);
-
-    final isExpanded = expandedNodes.contains(node.id);
-    final isSelected = selectedNode == node.id;
-    final hasChildren = children.isNotEmpty;
-    // 趣味ノードとカスタムノードは子がなくても展開可能（ノード追加のため）
-    final canExpand = hasChildren || node.type == NodeType.hobby || node.type == NodeType.custom;
+    final isExpanded = expandedNodes.contains('root');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ノード本体
-        Padding(
-          padding: EdgeInsets.only(left: depth * 24.0),
-          child: InkWell(
-            onTap: () {
-              // 選択状態を更新
-              ref.read(selectedNodeProvider.notifier).state = node.id;
+        _buildNodeTile(
+          id: 'root',
+          title: 'シューマイ',
+          icon: _buildRootIcon(),
+          depth: 0,
+          isExpanded: isExpanded,
+          canExpand: true,
+          onTap: () => _toggleExpand('root'),
+        ),
+        if (isExpanded)
+          ...categories.map((category) => _buildCategoryNode(category, hobbies, 1)),
+      ],
+    );
+  }
 
-              // 展開可能な場合は展開/折りたたみ
-              if (canExpand) {
-                final newExpandedNodes = Set<String>.from(expandedNodes);
-                if (isExpanded) {
-                  newExpandedNodes.remove(node.id);
-                } else {
-                  newExpandedNodes.add(node.id);
-                }
-                ref.read(expandedNodesProvider.notifier).state = newExpandedNodes;
-              }
-            },
-            onLongPress: node.isEditable
-                ? () => _showNodeOptions(node)
-                : null,
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey.shade300,
-                  width: isSelected ? 2 : 1,
+  /// カテゴリーノードを構築
+  Widget _buildCategoryNode(Category category, List<Hobby> hobbies, int depth) {
+    final expandedNodes = ref.watch(expandedNodesProvider);
+    final nodeId = 'category_${category.id}';
+    final isExpanded = expandedNodes.contains(nodeId);
+    final categoryHobbies = hobbies.where((h) => h.categoryId == category.id).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildNodeTile(
+          id: nodeId,
+          title: category.name,
+          icon: _buildCategoryIcon(),
+          depth: depth,
+          isExpanded: isExpanded,
+          canExpand: categoryHobbies.isNotEmpty,
+          onTap: () => _toggleExpand(nodeId),
+        ),
+        if (isExpanded)
+          ...categoryHobbies.map((hobby) => _buildHobbyNode(hobby, depth + 1)),
+      ],
+    );
+  }
+
+  /// 趣味ノードを構築
+  Widget _buildHobbyNode(Hobby hobby, int depth) {
+    final expandedNodes = ref.watch(expandedNodesProvider);
+    final nodeId = 'hobby_${hobby.id}';
+    final isExpanded = expandedNodes.contains(nodeId);
+    final hasChildren = hobby.children.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildNodeTile(
+          id: nodeId,
+          title: hobby.title,
+          icon: _buildHobbyIcon(),
+          depth: depth,
+          isExpanded: isExpanded,
+          canExpand: true, // 常に展開可能（ノード追加のため）
+          onTap: () => _toggleExpand(nodeId),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // メモボタン
+              IconButton(
+                onPressed: () => _showMemoSheet(hobby.id, hobby.title, null),
+                icon: Icon(
+                  Icons.note_alt_outlined,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                tooltip: 'メモ',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               ),
-              child: Row(
-                children: [
-                  // 展開アイコン（趣味・カスタムノードは子がなくても表示）
-                  if (canExpand)
-                    Icon(
-                      isExpanded
-                          ? Icons.keyboard_arrow_down
-                          : Icons.keyboard_arrow_right,
-                      size: 24,
-                      color: Colors.grey.shade600,
-                    )
-                  else
-                    const SizedBox(width: 24),
-                  const SizedBox(width: 8),
-
-                  // ノードアイコン
-                  _buildNodeIcon(node),
-                  const SizedBox(width: 12),
-
-                  // ノードタイトル
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          node.title,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: node.type == NodeType.root || node.type == NodeType.category
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                        if (node.description != null && node.description!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              node.description!,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // メモボタン（趣味ノードとカスタムノード）
-                  if (node.type == NodeType.hobby || node.type == NodeType.custom)
-                    IconButton(
-                      onPressed: () => _showMemoSheet(node),
-                      icon: Icon(
-                        Icons.note_alt_outlined,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      tooltip: 'メモ',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 36,
-                        minHeight: 36,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            ],
           ),
         ),
-
-        // 子ノード
-        if (isExpanded && hasChildren)
-          ...children.map((child) => _buildTreeNode(child, depth + 1)),
-
-        // カスタムノード追加ボタン（編集可能ノードまたは趣味ノード、かつ深さ制限内）
-        if (isExpanded && (node.isEditable || node.type == NodeType.hobby)) ...[
-          // 深さが制限内かチェック
-          if (depth + 1 < TreeNodeService.maxDepth)
-            Padding(
-              padding: EdgeInsets.only(left: (depth + 1) * 24.0),
-              child: TextButton.icon(
-                onPressed: () => _showAddNodeDialog(node.id),
-                icon: const Icon(Icons.add, size: 20),
-                label: const Text('ノードを追加'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            )
-          else
-            Padding(
-              padding: EdgeInsets.only(left: (depth + 1) * 24.0),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  '階層の上限に達しました',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ),
+        if (isExpanded) ...[
+          // 子ノード
+          ...hobby.children.map((node) => _buildCustomNode(hobby.id, node, depth + 1)),
+          // ノード追加ボタン
+          if (depth + 1 < maxNodeDepth)
+            _buildAddNodeButton(depth + 1, () => _showAddNodeDialog(hobby.id, null)),
         ],
       ],
     );
   }
 
-  /// ノードアイコンを構築
-  Widget _buildNodeIcon(TreeNode node) {
-    switch (node.type) {
-      case NodeType.root:
-        return Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: const Color(0xFF009977),
-            borderRadius: BorderRadius.circular(8),
+  /// カスタムノードを構築
+  Widget _buildCustomNode(String hobbyId, HobbyNode node, int depth) {
+    final expandedNodes = ref.watch(expandedNodesProvider);
+    final isExpanded = expandedNodes.contains(node.id);
+    final hasChildren = node.children.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildNodeTile(
+          id: node.id,
+          title: node.title,
+          subtitle: node.description,
+          icon: _buildCustomNodeIcon(),
+          depth: depth,
+          isExpanded: isExpanded,
+          canExpand: true, // 常に展開可能
+          onTap: () => _toggleExpand(node.id),
+          onLongPress: () => _showNodeOptions(hobbyId, node),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // メモボタン
+              IconButton(
+                onPressed: () => _showMemoSheet(hobbyId, node.title, node.id),
+                icon: Icon(
+                  Icons.note_alt_outlined,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                tooltip: 'メモ',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+            ],
           ),
-          child: ClipRRect(
+        ),
+        if (isExpanded) ...[
+          // 子ノード
+          ...node.children.map((child) => _buildCustomNode(hobbyId, child, depth + 1)),
+          // ノード追加ボタン
+          if (depth + 1 < maxNodeDepth)
+            _buildAddNodeButton(depth + 1, () => _showAddNodeDialog(hobbyId, node.id)),
+        ],
+      ],
+    );
+  }
+
+  /// ノードタイルを構築
+  Widget _buildNodeTile({
+    required String id,
+    required String title,
+    String? subtitle,
+    required Widget icon,
+    required int depth,
+    required bool isExpanded,
+    required bool canExpand,
+    required VoidCallback onTap,
+    VoidCallback? onLongPress,
+    Widget? trailing,
+  }) {
+    final selectedNode = ref.watch(selectedNodeProvider);
+    final isSelected = selectedNode == id;
+
+    return Padding(
+      padding: EdgeInsets.only(left: depth * 24.0),
+      child: InkWell(
+        onTap: () {
+          ref.read(selectedNodeProvider.notifier).state = id;
+          if (canExpand) onTap();
+        },
+        onLongPress: onLongPress,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primaryContainer
+                : Colors.white,
             borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/icons/app_icon.jpeg',
-              width: 40,
-              height: 40,
-              fit: BoxFit.cover,
+            border: Border.all(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.grey.shade300,
+              width: isSelected ? 2 : 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        );
-      case NodeType.category:
-        return Container(
+          child: Row(
+            children: [
+              // 展開アイコン
+              if (canExpand)
+                Icon(
+                  isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                  size: 24,
+                  color: Colors.grey.shade600,
+                )
+              else
+                const SizedBox(width: 24),
+              const SizedBox(width: 8),
+              // ノードアイコン
+              icon,
+              const SizedBox(width: 12),
+              // タイトル
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    if (subtitle != null && subtitle.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          subtitle,
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // 末尾ウィジェット
+              if (trailing != null) trailing,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// ノード追加ボタンを構築
+  Widget _buildAddNodeButton(int depth, VoidCallback onPressed) {
+    return Padding(
+      padding: EdgeInsets.only(left: depth * 24.0),
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text('ノードを追加'),
+        style: TextButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+    );
+  }
+
+  // ========== アイコン ==========
+
+  Widget _buildRootIcon() {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: const Color(0xFF009977),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.asset(
+          'assets/icons/app_icon.jpeg',
           width: 40,
           height: 40,
-          decoration: BoxDecoration(
-            color: Colors.blue.shade100,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            Icons.folder,
-            color: Colors.blue.shade700,
-          ),
-        );
-      case NodeType.hobby:
-        return Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.green.shade100,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            Icons.star,
-            color: Colors.green.shade700,
-          ),
-        );
-      case NodeType.custom:
-        return Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.orange.shade100,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            node.isCompleted ? Icons.check_circle : Icons.circle_outlined,
-            color: Colors.orange.shade700,
-          ),
-        );
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryIcon() {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.blue.shade100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(Icons.folder, color: Colors.blue.shade700),
+    );
+  }
+
+  Widget _buildHobbyIcon() {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.green.shade100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(Icons.star, color: Colors.green.shade700),
+    );
+  }
+
+  Widget _buildCustomNodeIcon() {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.orange.shade100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(Icons.circle_outlined, color: Colors.orange.shade700),
+    );
+  }
+
+  // ========== 操作メソッド ==========
+
+  void _toggleExpand(String nodeId) {
+    final expandedNodes = ref.read(expandedNodesProvider.notifier);
+    final current = expandedNodes.state;
+    if (current.contains(nodeId)) {
+      expandedNodes.state = current.difference({nodeId});
+    } else {
+      expandedNodes.state = {...current, nodeId};
     }
   }
 
-  /// ノード追加ダイアログを表示
-  void _showAddNodeDialog(String parentId) {
+  /// ノード追加ダイアログ
+  void _showAddNodeDialog(String hobbyId, String? parentNodeId) {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
 
@@ -364,23 +443,28 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
                   return;
                 }
 
-                final order = ref.read(treeNodeListProvider.notifier).getChildren(parentId).length;
-
-                final newNode = TreeNode.createCustom(
-                  parentId: parentId,
+                final newNode = HobbyNode.create(
                   title: titleController.text.trim(),
                   description: descriptionController.text.trim().isEmpty
                       ? null
                       : descriptionController.text.trim(),
-                  order: order,
                 );
 
                 try {
-                  await ref.read(treeNodeListProvider.notifier).addNode(newNode);
+                  if (parentNodeId == null) {
+                    // 趣味に直接追加
+                    await ref.read(hobbyListProvider.notifier).addNodeToHobby(hobbyId, newNode);
+                  } else {
+                    // 親ノードに追加
+                    await ref.read(hobbyListProvider.notifier).addNodeToNode(hobbyId, parentNodeId, newNode);
+                  }
 
                   // 親ノードを展開
                   final expandedNodes = ref.read(expandedNodesProvider.notifier);
-                  expandedNodes.state = {...expandedNodes.state, parentId};
+                  expandedNodes.state = {
+                    ...expandedNodes.state,
+                    parentNodeId ?? 'hobby_$hobbyId',
+                  };
 
                   if (context.mounted) {
                     Navigator.pop(context);
@@ -405,7 +489,7 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
   }
 
   /// ノードオプションを表示
-  void _showNodeOptions(TreeNode node) {
+  void _showNodeOptions(String hobbyId, HobbyNode node) {
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -418,7 +502,7 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
                 title: const Text('編集'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showEditNodeDialog(node);
+                  _showEditNodeDialog(hobbyId, node);
                 },
               ),
               ListTile(
@@ -426,7 +510,7 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
                 title: const Text('削除', style: TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
-                  _showDeleteConfirmation(node);
+                  _showDeleteConfirmation(hobbyId, node);
                 },
               ),
             ],
@@ -436,8 +520,8 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
     );
   }
 
-  /// ノード編集ダイアログを表示
-  void _showEditNodeDialog(TreeNode node) {
+  /// ノード編集ダイアログ
+  void _showEditNodeDialog(String hobbyId, HobbyNode node) {
     final titleController = TextEditingController(text: node.title);
     final descriptionController = TextEditingController(text: node.description ?? '');
 
@@ -452,17 +536,13 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
               children: [
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'タイトル',
-                  ),
+                  decoration: const InputDecoration(labelText: 'タイトル'),
                   autofocus: true,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: '説明（任意）',
-                  ),
+                  decoration: const InputDecoration(labelText: '説明（任意）'),
                   maxLines: 3,
                 ),
               ],
@@ -490,7 +570,7 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
                 );
 
                 try {
-                  await ref.read(treeNodeListProvider.notifier).updateNode(updatedNode);
+                  await ref.read(hobbyListProvider.notifier).updateNode(hobbyId, updatedNode);
 
                   if (context.mounted) {
                     Navigator.pop(context);
@@ -514,18 +594,15 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
     );
   }
 
-  /// 削除確認ダイアログを表示
-  void _showDeleteConfirmation(TreeNode node) {
-    final children = ref.read(treeNodeListProvider.notifier).getChildren(node.id);
-    final hasChildren = children.isNotEmpty;
-
+  /// 削除確認ダイアログ
+  void _showDeleteConfirmation(String hobbyId, HobbyNode node) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('ノードを削除'),
           content: Text(
-            hasChildren
+            node.children.isNotEmpty
                 ? '「${node.title}」とその子ノードをすべて削除しますか？'
                 : '「${node.title}」を削除しますか？',
           ),
@@ -537,7 +614,7 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  await ref.read(treeNodeListProvider.notifier).deleteNode(node.id);
+                  await ref.read(hobbyListProvider.notifier).removeNode(hobbyId, node.id);
 
                   if (context.mounted) {
                     Navigator.pop(context);
@@ -566,17 +643,18 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
   }
 
   /// メモシートを表示
-  void _showMemoSheet(TreeNode node) {
+  void _showMemoSheet(String hobbyId, String title, String? nodeId) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _MemoBottomSheet(
-        node: node,
+        hobbyId: hobbyId,
+        title: title,
+        nodeId: nodeId,
         onMemoAdded: () {
-          // メモ追加後にシートを更新するため再表示
           Navigator.pop(context);
-          _showMemoSheet(node);
+          _showMemoSheet(hobbyId, title, nodeId);
         },
       ),
     );
@@ -585,11 +663,15 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
 
 /// メモ一覧ボトムシート
 class _MemoBottomSheet extends StatefulWidget {
-  final TreeNode node;
+  final String hobbyId;
+  final String title;
+  final String? nodeId;
   final VoidCallback onMemoAdded;
 
   const _MemoBottomSheet({
-    required this.node,
+    required this.hobbyId,
+    required this.title,
+    this.nodeId,
     required this.onMemoAdded,
   });
 
@@ -613,12 +695,12 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
     _basePath = dir.path;
 
     List<HobbyMemo> memos;
-    if (widget.node.type == NodeType.hobby && widget.node.hobbyId != null) {
-      // 趣味ノードの場合はhobbyIdで取得
-      memos = await MemoService.loadMemosForHobby(widget.node.hobbyId!);
+    if (widget.nodeId != null) {
+      // カスタムノードのメモ
+      memos = await MemoService.loadMemosForNode(widget.nodeId!);
     } else {
-      // カスタムノードの場合はnodeIdで取得
-      memos = await MemoService.loadMemosForNode(widget.node.id);
+      // 趣味のメモ
+      memos = await MemoService.loadMemosForHobby(widget.hobbyId);
     }
 
     if (mounted) {
@@ -634,11 +716,9 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
       context,
       MaterialPageRoute(
         builder: (_) => AddMemoScreen(
-          // カスタムノードの場合はnodeIdを使用
-          nodeId: widget.node.type == NodeType.custom ? widget.node.id : null,
-          nodeTitle: widget.node.title,
-          // 趣味ノードの場合はhobbyIdを使用
-          hobbyId: widget.node.type == NodeType.hobby ? widget.node.hobbyId : null,
+          nodeId: widget.nodeId,
+          nodeTitle: widget.title,
+          hobbyId: widget.nodeId == null ? widget.hobbyId : null,
         ),
       ),
     );
@@ -706,7 +786,6 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-
               // ヘッダー
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -714,11 +793,8 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
                   children: [
                     Expanded(
                       child: Text(
-                        '${widget.node.title}のメモ',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        '${widget.title}のメモ',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                     ),
                     IconButton(
@@ -733,9 +809,7 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
                   ],
                 ),
               ),
-
               const Divider(height: 1),
-
               // メモ一覧
               Expanded(
                 child: _isLoading
@@ -745,19 +819,9 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
-                                  Icons.note_alt_outlined,
-                                  size: 64,
-                                  color: Colors.grey.shade300,
-                                ),
+                                Icon(Icons.note_alt_outlined, size: 64, color: Colors.grey.shade300),
                                 const SizedBox(height: 16),
-                                Text(
-                                  'メモはまだありません',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
+                                Text('メモはまだありません', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
                                 const SizedBox(height: 8),
                                 TextButton.icon(
                                   onPressed: _addMemo,
@@ -787,9 +851,7 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
 
   Widget _buildMemoCard(HobbyMemo memo) {
     final hasImage = memo.imageFileName != null && _basePath != null;
-    final imageFile = hasImage
-        ? File('$_basePath/images/${memo.imageFileName}')
-        : null;
+    final imageFile = hasImage ? File('$_basePath/images/${memo.imageFileName}') : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -800,33 +862,23 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // メモ内容
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ピンマークと日付
                 Row(
                   children: [
                     if (memo.isPinned)
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
-                        child: Icon(
-                          Icons.push_pin,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                        child: Icon(Icons.push_pin, size: 16, color: Theme.of(context).colorScheme.primary),
                       ),
                     Text(
                       _formatDate(memo.createdAt),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                     const Spacer(),
-                    // メニューボタン
                     PopupMenuButton<String>(
                       onSelected: (value) {
                         if (value == 'pin') {
@@ -840,10 +892,7 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
                           value: 'pin',
                           child: Row(
                             children: [
-                              Icon(
-                                memo.isPinned ? Icons.push_pin_outlined : Icons.push_pin,
-                                size: 20,
-                              ),
+                              Icon(memo.isPinned ? Icons.push_pin_outlined : Icons.push_pin, size: 20),
                               const SizedBox(width: 8),
                               Text(memo.isPinned ? 'ピン解除' : 'ピン留め'),
                             ],
@@ -860,36 +909,22 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
                           ),
                         ),
                       ],
-                      child: Icon(
-                        Icons.more_horiz,
-                        color: Colors.grey.shade600,
-                      ),
+                      child: Icon(Icons.more_horiz, color: Colors.grey.shade600),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                // コンテンツ
-                Text(
-                  memo.content,
-                  style: const TextStyle(fontSize: 15),
-                ),
+                Text(memo.content, style: const TextStyle(fontSize: 15)),
               ],
             ),
           ),
-
-          // 画像
           if (hasImage && imageFile != null && imageFile.existsSync())
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(12),
                 bottomRight: Radius.circular(12),
               ),
-              child: Image.file(
-                imageFile,
-                width: double.infinity,
-                height: 150,
-                fit: BoxFit.cover,
-              ),
+              child: Image.file(imageFile, width: double.infinity, height: 150, fit: BoxFit.cover),
             ),
         ],
       ),
