@@ -9,6 +9,7 @@ import '../models/category.dart';
 import '../providers/hobby_list_provider.dart';
 import '../providers/category_provider.dart';
 import '../services/memo_service.dart';
+import '../shared/widgets/image_viewer.dart';
 import 'add_memo_screen.dart';
 
 /// 最大階層数
@@ -954,12 +955,15 @@ class _MemoBottomSheetState extends State<_MemoBottomSheet> {
             ),
           ),
           if (hasImage && imageFile != null && imageFile.existsSync())
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
+            GestureDetector(
+              onTap: () => ImageViewer.show(context, imageFile),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
+                ),
+                child: Image.file(imageFile, width: double.infinity, height: 150, fit: BoxFit.cover),
               ),
-              child: Image.file(imageFile, width: double.infinity, height: 150, fit: BoxFit.cover),
             ),
         ],
       ),

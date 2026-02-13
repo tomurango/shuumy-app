@@ -7,6 +7,7 @@ import '../models/hobby.dart';
 import '../models/hobby_memo.dart';
 import '../models/hobby_node.dart';
 import '../services/memo_service.dart';
+import '../shared/widgets/image_viewer.dart';
 import 'edit_hobby_screen.dart';
 import 'add_memo_screen.dart';
 import 'edit_memo_screen.dart';
@@ -457,13 +458,16 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
               future: _getMemoImageFile(memo),
               builder: (context, snapshot) {
                 if (snapshot.hasData && snapshot.data != null) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      snapshot.data!,
-                      width: double.infinity,
-                      height: 200,
-                      fit: BoxFit.cover,
+                  return GestureDetector(
+                    onTap: () => ImageViewer.show(context, snapshot.data!),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        snapshot.data!,
+                        width: double.infinity,
+                        height: 200,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   );
                 }
