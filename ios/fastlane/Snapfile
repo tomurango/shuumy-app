@@ -1,0 +1,30 @@
+# Snapfile - スクリーンショット自動生成の設定
+
+# 対象デバイス（既存のApp Store運用に合わせた構成）
+devices([
+  "iPhone 15 Pro Max",    # 6.7インチ（6.5インチ互換）
+  "iPad Pro 13-inch (M4)" # 13インチ
+])
+
+# 対象言語
+languages([
+  "ja"
+])
+
+# スクリーンショットの保存先
+output_directory("./fastlane/screenshots")
+
+# スクリーンショット撮影前にステータスバーを統一
+override_status_bar(true)
+
+# シミュレーターをクリーンな状態で起動（時間短縮のため無効）
+erase_simulator(false)
+
+# スキーム
+scheme("Runner")
+
+# スクリーンショット撮影中の待機時間（秒）
+# launch_arguments(["-uitesting"])
+
+# 同時実行数（並列処理を無効化してリソース問題を回避）
+concurrent_simulators(false)

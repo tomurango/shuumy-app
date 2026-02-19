@@ -1,0 +1,21 @@
+# Fastlane gitignore
+
+# レポートファイル
+report.xml
+Preview.html
+
+# ビルド成果物
+*.ipa
+*.dSYM.zip
+
+# 認証情報（絶対にコミットしない）
+*.p12
+*.mobileprovision
+*.cer
+AuthKey_*.p8
+
+# スクリーンショット（容量が大きい場合は除外）
+# screenshots/
+
+# README（自動生成）
+README.md

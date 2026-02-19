@@ -1,0 +1,10 @@
+# シンプルなテストフロー
+# 実行: maestro test .maestro/simple_test.yaml
+
+appId: com.tomurango.shuumy
+---
+
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: test_screenshot
+- assertVisible: ".*"

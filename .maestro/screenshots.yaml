@@ -1,0 +1,109 @@
+# Maestro スクリーンショット自動生成
+# 実行: maestro test .maestro/screenshots.yaml
+#
+# 事前準備:
+# 1. シミュレーターを起動: open -a Simulator
+# 2. アプリをインストール: flutter install
+
+appId: com.tomurango.shuumy
+---
+
+# アプリ起動（データを保持）
+- launchApp
+
+# アプリ起動待機
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+
+- waitForAnimationToEnd
+
+# ========================================
+# 1. ホーム画面
+# ========================================
+- takeScreenshot: screenshots/ja/01_HomeScreen
+
+# ========================================
+# 2. カテゴリースワイプ（2番目のタブ）
+# ========================================
+- swipe:
+    start: "80%,50%"
+    end: "20%,50%"
+    duration: 300
+
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/ja/02_CategorySwipe
+
+# 最初のカテゴリーに戻る
+- swipe:
+    start: "20%,50%"
+    end: "80%,50%"
+    duration: 300
+
+- waitForAnimationToEnd
+
+# ========================================
+# 3. 趣味詳細画面
+# ========================================
+# 最初の趣味カードをタップ（グリッドの左上）
+- tapOn:
+    point: "25%,30%"
+
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/ja/03_HobbyDetail
+
+# ========================================
+# 4. メモ追加画面（もしボタンがあれば）
+# ========================================
+- runFlow:
+    when:
+      visible: ".*メモ.*"
+    commands:
+      - tapOn: ".*メモ.*"
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/ja/04_AddMemo
+      - pressKey: back
+
+# 詳細画面から戻る
+- pressKey: back
+- waitForAnimationToEnd
+
+# ========================================
+# 5. 樹形図画面
+# ========================================
+# ツールバーから樹形図ボタンをタップ
+- runFlow:
+    when:
+      visible: ".*樹形図.*"
+    commands:
+      - tapOn: ".*樹形図.*"
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/ja/05_TreeDiagram
+      - pressKey: back
+
+# ========================================
+# 6. 設定画面
+# ========================================
+# 設定アイコン（画面右下）をタップ
+- tapOn:
+    point: "90%,95%"
+
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/ja/06_Settings
+
+# ========================================
+# 7. 活動記録画面
+# ========================================
+- runFlow:
+    when:
+      visible: "活動記録"
+    commands:
+      - tapOn: "活動記録"
+      - waitForAnimationToEnd
+      - takeScreenshot: screenshots/ja/07_ActivityRecord
+      - pressKey: back
+
+# ========================================
+# 完了
+# ========================================
+- pressKey: home

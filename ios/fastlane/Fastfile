@@ -1,0 +1,115 @@
+# Fastfile - シューマイ iOS アプリのリリース自動化
+#
+# 使用方法:
+#   fastlane beta        - TestFlightにアップロード
+#   fastlane release     - App Storeにアップロード
+#   fastlane screenshots - Maestroでスクリーンショットを自動生成
+#   fastlane build       - ビルドのみ
+#   fastlane upload      - 既存IPAをアップロード
+
+default_platform(:ios)
+
+# App Store Connect API キー設定
+API_KEY = app_store_connect_api_key(
+  key_id: "9WWS63UF8R",
+  issuer_id: "77deb994-187e-4739-abd4-cdc905295fe6",
+  key_filepath: "./fastlane/AuthKey_9WWS63UF8R.p8"
+)
+
+platform :ios do
+
+  desc "Maestroでスクリーンショットを自動生成"
+  lane :screenshots do
+    # 事前にシミュレーターを起動し、アプリをインストールしておく必要があります
+    # 1. サンプルデータを配置
+    UI.message("サンプルデータを配置中...")
+    sh("cd ../.. && ./scripts/setup_sample_data.sh")
+
+    # 2. Maestroでスクリーンショットを撮影
+    UI.message("スクリーンショットを撮影中...")
+    sh("cd ../.. && ~/.maestro/bin/maestro test .maestro/screenshots.yaml")
+
+    UI.success("スクリーンショットが screenshots/ja/ に保存されました")
+  end
+
+  desc "TestFlightにベータ版をアップロード"
+  lane :beta do
+    # ビルド番号を自動インクリメント
+    increment_build_number(xcodeproj: "Runner.xcodeproj")
+
+    # アプリをビルド
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+      output_directory: "./build",
+      output_name: "shuumy.ipa"
+    )
+
+    # TestFlightにアップロード
+    upload_to_testflight(
+      api_key: API_KEY,
+      skip_waiting_for_build_processing: true
+    )
+  end
+
+  desc "App Storeに本番リリース"
+  lane :release do
+    # ビルド番号を自動インクリメント
+    increment_build_number(xcodeproj: "Runner.xcodeproj")
+
+    # アプリをビルド
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+      output_directory: "./build",
+      output_name: "shuumy.ipa"
+    )
+
+    # App Store Connectにアップロード
+    upload_to_app_store(
+      api_key: API_KEY,
+      skip_metadata: false,
+      skip_screenshots: true,  # スクリーンショットは別途管理
+      submit_for_review: false,  # 自動審査提出はオフ（手動確認後に提出）
+      force: true,  # HTMLレポートのスキップ
+      precheck_include_in_app_purchases: false  # APIキーではIAPのチェック不可
+    )
+  end
+
+  desc "ビルドのみ（アップロードなし）"
+  lane :build do
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+      output_directory: "./build",
+      output_name: "shuumy.ipa"
+    )
+  end
+
+  desc "メタデータのみアップロード（ビルドなし）"
+  lane :metadata do
+    upload_to_app_store(
+      api_key: API_KEY,
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      force: true
+    )
+  end
+
+  desc "既存のIPAをアップロード（ビルド済みの場合）"
+  lane :upload do
+    upload_to_app_store(
+      api_key: API_KEY,
+      ipa: "./build/shuumy.ipa",
+      skip_metadata: false,
+      skip_screenshots: true,
+      submit_for_review: false,
+      force: true,
+      precheck_include_in_app_purchases: false  # APIキーではIAPのチェック不可
+    )
+  end
+
+end
