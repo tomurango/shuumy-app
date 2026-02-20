@@ -1,0 +1,99 @@
+# iPad用スクリーンショット自動生成
+# iPad Pro 13インチ (2064x2752)
+# ツールバーボタン順序: 左矢印, 右矢印, 追加(+), 樹形図, 設定
+appId: com.tomurango.shuumy
+---
+
+# 1. ホーム画面
+- launchApp
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPad Pro 13-inch (M4)-01_HomeScreen"
+
+# 2. 趣味詳細画面
+# iPadのグリッドで最初の趣味カードをタップ
+- tapOn:
+    point: "22%,22%"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPad Pro 13-inch (M4)-02_HobbyDetail"
+
+# 3. メモ追加画面（詳細画面右下のFAB）
+# FABは bottom:20, right:20 で配置されているため、iPadでは画面端に近い
+- tapOn:
+    point: "97%,95%"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+# テキストエリアをタップしてフォーカス
+- tapOn:
+    point: "50%,30%"
+- inputText: "村上春樹の新作を読み始めた。文体が心地よく、続きが気になって仕方ない。週末は一気読みしたい！"
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPad Pro 13-inch (M4)-03_AddMemo"
+
+# アプリ再起動してホーム画面に戻る
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+- waitForAnimationToEnd
+
+# 4. 樹形図画面
+# Y=95%を試す
+- tapOn:
+    point: "66%,95%"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+# ルートノードをタップして展開
+- tapOn:
+    point: "50%,12%"
+- waitForAnimationToEnd
+# カテゴリをタップして展開
+- tapOn:
+    point: "50%,16%"
+- waitForAnimationToEnd
+# 趣味をタップして展開
+- tapOn:
+    point: "50%,20%"
+- waitForAnimationToEnd
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPad Pro 13-inch (M4)-04_TreeDiagram"
+
+# アプリ再起動してホーム画面に戻る
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+- waitForAnimationToEnd
+
+# 5. 設定画面
+# Y=95%を試す
+- tapOn:
+    point: "82%,95%"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPad Pro 13-inch (M4)-05_Settings"
+
+# 6. 活動記録画面
+# 設定画面の2番目のメニュー項目（iPadでは画面が高いので低い位置）
+- tapOn:
+    point: "50%,18%"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPad Pro 13-inch (M4)-06_ActivityRecord"
+
+- pressKey: home

@@ -18,18 +18,36 @@ API_KEY = app_store_connect_api_key(
 
 platform :ios do
 
-  desc "Maestroでスクリーンショットを自動生成"
-  lane :screenshots do
-    # 事前にシミュレーターを起動し、アプリをインストールしておく必要があります
-    # 1. サンプルデータを配置
+  desc "MaestroでiPhoneスクリーンショットを自動生成（事前にiPhoneシミュレーターを起動しておく）"
+  lane :screenshots_iphone do
+    # 起動中のiPhoneシミュレーターのUDIDを取得
+    device_udid = `xcrun simctl list devices booted | grep iPhone | grep -oE '\\([0-9A-Fa-f-]+\\)' | tr -d '()' | head -1`.strip
+    UI.user_error!("iPhoneシミュレーターが起動していません") if device_udid.empty?
+    UI.message("対象デバイス: #{device_udid}")
+
     UI.message("サンプルデータを配置中...")
-    sh("cd ../.. && ./scripts/setup_sample_data.sh")
+    sh("cd ../.. && ./scripts/setup_sample_data.sh #{device_udid}")
 
-    # 2. Maestroでスクリーンショットを撮影
-    UI.message("スクリーンショットを撮影中...")
-    sh("cd ../.. && ~/.maestro/bin/maestro test .maestro/screenshots.yaml")
+    UI.message("iPhoneスクリーンショットを撮影中...")
+    sh("cd ../.. && ~/.maestro/bin/maestro --device #{device_udid} test .maestro/screenshots_iphone.yaml")
 
-    UI.success("スクリーンショットが screenshots/ja/ に保存されました")
+    UI.success("スクリーンショットが ios/fastlane/screenshots/ja/iPhone 16 Pro Max-*.png に保存されました")
+  end
+
+  desc "MaestroでiPadスクリーンショットを自動生成（事前にiPadシミュレーターを起動しておく）"
+  lane :screenshots_ipad do
+    # 起動中のiPadシミュレーターのUDIDを取得
+    device_udid = `xcrun simctl list devices booted | grep iPad | grep -oE '\\([0-9A-Fa-f-]+\\)' | tr -d '()' | head -1`.strip
+    UI.user_error!("iPadシミュレーターが起動していません") if device_udid.empty?
+    UI.message("対象デバイス: #{device_udid}")
+
+    UI.message("サンプルデータを配置中...")
+    sh("cd ../.. && ./scripts/setup_sample_data.sh #{device_udid}")
+
+    UI.message("iPadスクリーンショットを撮影中...")
+    sh("cd ../.. && ~/.maestro/bin/maestro --device #{device_udid} test .maestro/screenshots_ipad.yaml")
+
+    UI.success("スクリーンショットが ios/fastlane/screenshots/ja/iPad Pro 13-inch (M4)-*.png に保存されました")
   end
 
   desc "TestFlightにベータ版をアップロード"
@@ -96,6 +114,18 @@ platform :ios do
       skip_binary_upload: true,
       skip_screenshots: true,
       force: true
+    )
+  end
+
+  desc "スクリーンショットのみアップロード"
+  lane :upload_screenshots do
+    upload_to_app_store(
+      api_key: API_KEY,
+      skip_binary_upload: true,
+      skip_metadata: true,
+      overwrite_screenshots: true,
+      force: true,
+      precheck_include_in_app_purchases: false
     )
   end
 

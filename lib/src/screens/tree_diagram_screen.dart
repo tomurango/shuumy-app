@@ -378,6 +378,19 @@ class _TreeDiagramScreenState extends ConsumerState<TreeDiagramScreen> {
           width: 40,
           height: 40,
           fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            // 画像読み込みエラー時はアイコンを表示
+            return Container(
+              width: 40,
+              height: 40,
+              color: const Color(0xFF009977),
+              child: const Icon(
+                Icons.account_tree,
+                color: Colors.white,
+                size: 24,
+              ),
+            );
+          },
         ),
       ),
     );

@@ -1,0 +1,78 @@
+# iPhone用スクリーンショット自動生成
+appId: com.tomurango.shuumy
+---
+
+# 1. ホーム画面
+- launchApp
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPhone 16 Pro Max-01_HomeScreen"
+
+# 2. 趣味詳細画面
+- tapOn:
+    point: "50%,25%"
+- waitForAnimationToEnd
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPhone 16 Pro Max-02_HobbyDetail"
+
+# 3. メモ追加画面（詳細画面右下のFAB）
+# FABは bottom:20, right:20 で配置
+- tapOn:
+    point: "95%,95%"
+- waitForAnimationToEnd
+# テキストエリアをタップしてフォーカス
+- tapOn:
+    point: "50%,30%"
+- inputText: "村上春樹の新作を読み始めた。文体が心地よく、続きが気になって仕方ない。週末は一気読みしたい！"
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPhone 16 Pro Max-03_AddMemo"
+
+# アプリ再起動
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+- waitForAnimationToEnd
+
+# 4. 樹形図画面（階層を展開）
+- tapOn:
+    point: "70%,92%"
+- waitForAnimationToEnd
+# シューマイノード（ルート）をタップして展開
+- tapOn:
+    point: "50%,18%"
+- waitForAnimationToEnd
+# カテゴリをタップして展開
+- tapOn:
+    point: "50%,24%"
+- waitForAnimationToEnd
+# 趣味（読書）をタップして展開
+- tapOn:
+    point: "50%,30%"
+- waitForAnimationToEnd
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPhone 16 Pro Max-04_TreeDiagram"
+
+# アプリ再起動
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+- waitForAnimationToEnd
+
+# 5. 設定画面
+- tapOn:
+    point: "80%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPhone 16 Pro Max-05_Settings"
+
+# 6. 活動記録画面
+- tapOn:
+    point: "50%,32%"
+- waitForAnimationToEnd
+- takeScreenshot: "ios/fastlane/screenshots/ja/iPhone 16 Pro Max-06_ActivityRecord"
+
+- pressKey: home

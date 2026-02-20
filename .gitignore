@@ -55,3 +55,7 @@ ios/fastlane/*.p8
 
 # Maestro
 .maestro/.maestro/
+
+# スクリーンショット（Maestro旧出力先・テスト用）
+/screenshots/
+/test_screenshot.png

@@ -1,14 +1,20 @@
 #!/bin/bash
 # サンプルデータをシミュレーターに配置するスクリプト
-# 使用方法: ./scripts/setup_sample_data.sh
+# 使用方法:
+#   ./scripts/setup_sample_data.sh               # 起動中の最初のシミュレーターを使用
+#   ./scripts/setup_sample_data.sh <DEVICE_UDID>  # UDIDを指定して実行
 
 set -e
 
 # シミュレーターとアプリ情報
 APP_ID="com.tomurango.shuumy"
 
-# 起動中のシミュレーターを取得
-DEVICE_ID=$(xcrun simctl list devices booted -j | grep -o '"udid" : "[^"]*"' | head -1 | cut -d'"' -f4)
+# 引数でUDIDが指定されていればそれを使用、なければ起動中の最初のシミュレーターを使用
+if [ -n "$1" ]; then
+    DEVICE_ID="$1"
+else
+    DEVICE_ID=$(xcrun simctl list devices booted -j | grep -o '"udid" : "[^"]*"' | head -1 | cut -d'"' -f4)
+fi
 
 if [ -z "$DEVICE_ID" ]; then
     echo "Error: No booted simulator found"
@@ -43,12 +49,24 @@ cat > "$APP_DATA/categories.json" << 'EOF'
 [{"id":"default_all","name":"すべて","order":0,"backgroundImagePath":null,"createdAt":"2026-02-19T12:00:00.000000","updatedAt":"2026-02-19T12:00:00.000000"}]
 EOF
 
-# hobbies.json
+# hobbies.json（階層構造付き）
 cat > "$APP_DATA/hobbies.json" << 'EOF'
 [
-  {"id":"hobby-001","title":"読書","memo":null,"imageFileName":"hobby_reading.jpg","categoryId":"default_all","order":0,"createdAt":"2026-01-15T10:00:00.000000","updatedAt":"2026-01-15T10:00:00.000000","children":[]},
-  {"id":"hobby-002","title":"カフェ巡り","memo":null,"imageFileName":"hobby_cafe.jpg","categoryId":"default_all","order":1,"createdAt":"2026-01-20T14:30:00.000000","updatedAt":"2026-01-20T14:30:00.000000","children":[]},
-  {"id":"hobby-003","title":"プログラミング","memo":null,"imageFileName":"hobby_programming.jpg","categoryId":"default_all","order":2,"createdAt":"2026-02-01T09:00:00.000000","updatedAt":"2026-02-01T09:00:00.000000","children":[]},
+  {"id":"hobby-001","title":"読書","memo":null,"imageFileName":"hobby_reading.jpg","categoryId":"default_all","order":0,"createdAt":"2026-01-15T10:00:00.000000","updatedAt":"2026-01-15T10:00:00.000000","children":[
+    {"id":"node-001","title":"小説","description":"フィクション作品","order":0,"children":[
+      {"id":"node-001-1","title":"村上春樹","description":null,"order":0,"children":[],"createdAt":"2026-02-01T10:00:00.000000","updatedAt":null},
+      {"id":"node-001-2","title":"東野圭吾","description":null,"order":1,"children":[],"createdAt":"2026-02-01T10:00:00.000000","updatedAt":null}
+    ],"createdAt":"2026-02-01T10:00:00.000000","updatedAt":null},
+    {"id":"node-002","title":"技術書","description":"プログラミング関連","order":1,"children":[],"createdAt":"2026-02-01T10:00:00.000000","updatedAt":null}
+  ]},
+  {"id":"hobby-002","title":"カフェ巡り","memo":null,"imageFileName":"hobby_cafe.jpg","categoryId":"default_all","order":1,"createdAt":"2026-01-20T14:30:00.000000","updatedAt":"2026-01-20T14:30:00.000000","children":[
+    {"id":"node-003","title":"東京","description":null,"order":0,"children":[
+      {"id":"node-003-1","title":"渋谷エリア","description":null,"order":0,"children":[],"createdAt":"2026-02-01T10:00:00.000000","updatedAt":null}
+    ],"createdAt":"2026-02-01T10:00:00.000000","updatedAt":null}
+  ]},
+  {"id":"hobby-003","title":"プログラミング","memo":null,"imageFileName":"hobby_programming.jpg","categoryId":"default_all","order":2,"createdAt":"2026-02-01T09:00:00.000000","updatedAt":"2026-02-01T09:00:00.000000","children":[
+    {"id":"node-004","title":"Flutter","description":"クロスプラットフォーム開発","order":0,"children":[],"createdAt":"2026-02-01T10:00:00.000000","updatedAt":null}
+  ]},
   {"id":"hobby-004","title":"音楽鑑賞","memo":null,"imageFileName":"hobby_music.jpg","categoryId":"default_all","order":3,"createdAt":"2026-02-10T18:00:00.000000","updatedAt":"2026-02-10T18:00:00.000000","children":[]}
 ]
 EOF

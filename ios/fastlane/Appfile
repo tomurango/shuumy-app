@@ -2,15 +2,4 @@
 app_identifier("com.tomurango.shuumy") # Bundle ID
 team_id("LHQ9HKN8D4") # Developer Portal Team ID
 
-# App Store Connect API キー認証（推奨）
-api_key_path("./fastlane/AuthKey_9WWS63UF8R.p8")
-
-# APIキー情報
-for_lane :release do
-end
-
-for_lane :beta do
-end
-
-for_lane :metadata do
-end
+# 注: API キー認証は Fastfile で設定しています
