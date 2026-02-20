@@ -1261,3 +1261,87 @@ final selectedNodeProvider = StateProvider<String?>;
 設計内容の確認とフィードバック受領後、Phase 2.1（データ層実装）から着手予定。
 
 **現在の状態**: Phase 2設計完了、フィードバック待ち
+
+---
+
+## 現在の開発状況 (2026-02-20) ※最新
+
+### 📱 バージョン・リリース状況
+
+| プラットフォーム | バージョン | 状態 |
+|---|---|---|
+| iOS | v1.3.0+1 | 審査提出済み |
+| Android | - | 準備中（Google Play Console設定済み） |
+
+### ✅ 実装済み主要機能
+
+| 機能 | 概要 |
+|---|---|
+| 趣味管理 | グリッド表示・CRUD・画像設定 |
+| メモ | テキスト+画像・ピン留め・280文字制限 |
+| カテゴリー | プレミアム機能・背景画像設定 |
+| 活動記録 | 設定画面から専用画面。2週間/月間/年間ビュー |
+| 樹形図 | カテゴリー→趣味→カスタムノードの階層管理 |
+| プレミアム | 月額¥300・年額¥2,500・買い切り¥5,000 |
+
+### 🎯 樹形図機能の実装状況（Phase 3完了）
+
+- **データ**: `hobbies.json` 内に `children` フィールドとして統合保存
+- **UI**: 設定画面・ホームツールバーから遷移、ヘッダーボタンでノード追加
+- **ノード**: タイトル・説明・完了フラグ・子ノード（再帰構造）
+- **画像エラー対応**: 読み込み失敗時にアイコンフォールバック表示
+
+### 📸 スクリーンショット自動化（Maestro）
+
+#### ファイル構成
+```
+.maestro/
+  screenshots_iphone.yaml   # iPhone 16 Pro Max用（6画面）
+  screenshots_ipad.yaml     # iPad Pro 13-inch (M4)用（6画面）
+
+ios/fastlane/screenshots/ja/
+  iPhone 16 Pro Max-0{1-6}_*.png   # Fastlane upload対象
+  iPad Pro 13-inch (M4)-0{1-6}_*.png
+
+scripts/
+  setup_sample_data.sh   # サンプルデータ配置（引数でUDID指定可能）
+```
+
+#### 撮影6画面
+1. ホーム画面
+2. 趣味詳細画面
+3. メモ作成画面（サンプルテキスト入力済み）
+4. 樹形図画面
+5. 設定画面
+6. 活動記録画面
+
+#### 実行コマンド
+```bash
+# iPhone（iPhone 16 Pro Maxシミュレーター起動後）
+cd ios && fastlane screenshots_iphone
+
+# iPad（iPad Pro 13-inch (M4)シミュレーター起動後）
+cd ios && fastlane screenshots_ipad
+
+# App Store Connectにアップロード
+cd ios && fastlane upload_screenshots
+```
+
+#### 注意事項
+- iPhone/iPadは**片方ずつ**起動してから実行（UDID自動検出のため）
+- サンプルデータは `setup_sample_data.sh` が自動配置
+- `ios/fastlane/screenshots/` はgitignore済み（毎回再生成）
+
+### 🔧 Fastlaneレーン一覧
+
+| レーン | 用途 |
+|---|---|
+| `screenshots_iphone` | iPhone撮影（UDID自動検出） |
+| `screenshots_ipad` | iPad撮影（UDID自動検出） |
+| `upload_screenshots` | App Store Connectへアップロード |
+| `beta` | TestFlightアップロード |
+| `release` | App Storeリリース |
+| `metadata` | メタデータのみ更新 |
+
+### 🚀 次の作業
+- 次の機能改善（内容は次回セッションで決定）
