@@ -6,7 +6,6 @@ import 'package:path/path.dart' as path;
 import '../models/hobby.dart';
 import '../models/hobby_memo.dart';
 import '../models/hobby_node.dart';
-import '../providers/hobby_list_provider.dart';
 import '../providers/habit_log_provider.dart';
 import '../services/memo_service.dart';
 import '../shared/widgets/image_viewer.dart';
@@ -118,69 +117,16 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
           showBackground: false,
         ),
         actions: [
-          Builder(builder: (context) {
-            final hobby = ref.watch(hobbyListProvider).firstWhere(
-              (h) => h.id == widget.hobby.id,
-              orElse: () => widget.hobby,
-            );
-            return PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Colors.black),
-              onSelected: (value) {
-                if (value == 'edit') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EditHobbyScreen(hobby: widget.hobby),
-                    ),
-                  );
-                } else if (value == 'toggle_habit') {
-                  ref.read(hobbyListProvider.notifier).update(
-                    hobby.copyWith(isHabitTracked: !hobby.isHabitTracked),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        hobby.isHabitTracked
-                            ? '習慣の記録を解除しました'
-                            : '習慣として記録するように設定しました',
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem<String>(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 18),
-                      SizedBox(width: 10),
-                      Text('編集'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'toggle_habit',
-                  child: Row(
-                    children: [
-                      Icon(
-                        hobby.isHabitTracked
-                            ? Icons.repeat_on_outlined
-                            : Icons.repeat,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(hobby.isHabitTracked
-                          ? '習慣の記録を解除'
-                          : '習慣として記録する'),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }),
+          _buildNavButton(
+            icon: Icons.edit,
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EditHobbyScreen(hobby: widget.hobby),
+              ),
+            ),
+            showBackground: false,
+          ),
         ],
       ),
       body: Stack(
@@ -333,17 +279,10 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
                               ),
                             )
                           else
-                            Container(
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(color: Colors.grey[200]!),
-                                ),
-                              ),
-                              child: Column(
-                                children: _memos
-                                    .map((memo) => _buildMemoItem(memo))
-                                    .toList(),
-                              ),
+                            Column(
+                              children: _memos
+                                  .map((memo) => _buildMemoItem(memo))
+                                  .toList(),
                             ),
 
                           const SizedBox(height: 100), // フローティングボタンのための余白
@@ -405,38 +344,24 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
   }
 
   Widget _buildProfileIcon() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Hero(
-        tag: 'hobby_image_${widget.hobby.id}',
-        child: Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.grey[200],
-            image: _imageFile != null
-                ? DecorationImage(
-                    image: FileImage(_imageFile!),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-          ),
-          child: _imageFile == null
-              ? Icon(Icons.broken_image, size: 30, color: Colors.grey[600])
+    return Hero(
+      tag: 'hobby_image_${widget.hobby.id}',
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.grey[200],
+          image: _imageFile != null
+              ? DecorationImage(
+                  image: FileImage(_imageFile!),
+                  fit: BoxFit.cover,
+                )
               : null,
         ),
+        child: _imageFile == null
+            ? Icon(Icons.broken_image, size: 30, color: Colors.grey[600])
+            : null,
       ),
     );
   }
@@ -467,13 +392,10 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
 
   Widget _buildMemoItem(HobbyMemo memo) {
     return Container(
-      padding: const EdgeInsets.only(left: 0, right: 0, top: 12, bottom: 12),
+      padding: const EdgeInsets.only(left: 0, right: 0, top: 12, bottom: 20),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(
-            color: Colors.grey[200]!,
-            width: 1,
-          ),
+          top: BorderSide(color: Colors.grey[200]!, width: 1),
         ),
       ),
       child: Column(

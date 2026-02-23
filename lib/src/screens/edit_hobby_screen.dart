@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -29,7 +31,9 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
   File? _currentImage;
   File? _selectedHeaderImage;
   File? _currentHeaderImage;
+  bool _clearImage = false;
   bool _clearHeaderImage = false;
+  late bool _isHabitTracked;
   late String _selectedCategoryId;
 
   @override
@@ -38,6 +42,7 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
     _titleController = TextEditingController(text: widget.hobby.title);
     _memoController = TextEditingController(text: widget.hobby.memo ?? '');
     _selectedCategoryId = widget.hobby.categoryId;
+    _isHabitTracked = widget.hobby.isHabitTracked;
     _loadCurrentImages();
   }
 
@@ -142,9 +147,20 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
                 final dir = await getApplicationDocumentsDirectory();
                 final oldImagePath = path.join(dir.path, 'images', widget.hobby.imageFileName);
                 final oldImageFile = File(oldImagePath);
-                if (oldImageFile.existsSync()) {
-                  await oldImageFile.delete();
-                }
+                if (oldImageFile.existsSync()) await oldImageFile.delete();
+              } else if (_clearImage) {
+                // デフォルト画像に差し替え
+                final tempDir = await getTemporaryDirectory();
+                final defaultBytes = await rootBundle.load('assets/images/default_hobby_icon.png');
+                final tempFile = File('${tempDir.path}/default_hobby_${const Uuid().v4()}.png');
+                await tempFile.writeAsBytes(defaultBytes.buffer.asUint8List());
+                final savedDefault = await HobbyStorageService.saveImageToLocalDirectory(tempFile);
+                imageFileName = path.basename(savedDefault.path);
+
+                final dir = await getApplicationDocumentsDirectory();
+                final oldImagePath = path.join(dir.path, 'images', widget.hobby.imageFileName);
+                final oldImageFile = File(oldImagePath);
+                if (oldImageFile.existsSync()) await oldImageFile.delete();
               }
 
               // ヘッダー画像の処理
@@ -181,7 +197,7 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
                 createdAt: widget.hobby.createdAt,
                 updatedAt: DateTime.now(),
                 children: widget.hobby.children,
-                isHabitTracked: widget.hobby.isHabitTracked,
+                isHabitTracked: _isHabitTracked,
               );
 
               ref.read(hobbyListProvider.notifier).update(updatedHobby);
@@ -223,73 +239,43 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // アイコン画像選択セクション
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _pickImage,
-                        child: Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            color: Colors.grey[100],
-                            border: Border.all(
-                              color: Colors.grey[300]!,
-                              width: 2,
-                            ),
-                          ),
-                          child: _selectedImage != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(14),
-                                  child: Image.file(
-                                    _selectedImage!,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : _currentImage != null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(14),
-                                      child: Image.file(
-                                        _currentImage!,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.add_photo_alternate_outlined,
-                                      size: 32,
-                                      color: Colors.grey[600],
-                                    ),
-                        ),
+                  // 趣味名セクション
+                  const Text(
+                    "趣味の名前",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _titleController,
+                    style: const TextStyle(
+                      fontSize: 16,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '例: 読書、料理、写真撮影',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[500],
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "アイコン画像",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _selectedImage != null ? "新しい画像を選択しました" : "タップして画像を変更",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: _selectedImage != null ? const Color(0xFF1DA1F2) : Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
                       ),
-                    ],
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF1DA1F2), width: 2),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 30),
 
                   // ヘッダー画像選択セクション
                   const Text(
@@ -362,11 +348,11 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
                     ),
                   ],
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 24),
 
-                  // 趣味名セクション
+                  // アイコン画像選択セクション
                   const Text(
-                    "趣味の名前",
+                    "アイコン画像",
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -374,31 +360,58 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _titleController,
-                    style: const TextStyle(
-                      fontSize: 16,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: '例: 読書、料理、写真撮影',
-                      hintStyle: TextStyle(
-                        color: Colors.grey[500],
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.grey[100],
+                        border: Border.all(
+                          color: Colors.grey[300]!,
+                          width: 2,
+                        ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF1DA1F2), width: 2),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      child: _selectedImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Image.file(
+                                _selectedImage!,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : _currentImage != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.file(
+                                    _currentImage!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.add_photo_alternate_outlined,
+                                  size: 32,
+                                  color: Colors.grey[600],
+                                ),
                     ),
                   ),
+                  if (_selectedImage != null || _currentImage != null) ...[
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () => setState(() {
+                        _selectedImage = null;
+                        _currentImage = null;
+                        _clearImage = true;
+                      }),
+                      icon: const Icon(Icons.delete_outline,
+                          size: 16, color: Colors.red),
+                      label: const Text(
+                        'アイコン画像を削除（デフォルトに戻す）',
+                        style: TextStyle(color: Colors.red, fontSize: 13),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 30),
 
@@ -437,6 +450,30 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
                       ),
                       contentPadding: const EdgeInsets.all(12),
                     ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // 習慣トラッカー設定
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          '習慣として記録する',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      Switch(
+                        value: _isHabitTracked,
+                        activeColor: const Color(0xFF009977),
+                        onChanged: (value) =>
+                            setState(() => _isHabitTracked = value),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 20),
