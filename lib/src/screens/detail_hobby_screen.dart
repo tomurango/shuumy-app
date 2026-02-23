@@ -117,14 +117,6 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
           onPressed: () => Navigator.pop(context),
           showBackground: false,
         ),
-        title: Text(
-          widget.hobby.title,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
         actions: [
           Builder(builder: (context) {
             final hobby = ref.watch(hobbyListProvider).firstWhere(
@@ -204,7 +196,7 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
                     // YouTubeスタイル: 角丸カード型ヘッダー画像
                     if (_headerImageFile != null) ...[
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                         child: GestureDetector(
                           onTap: () =>
                               ImageViewer.show(context, _headerImageFile!),
@@ -528,7 +520,7 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
               const Spacer(),
               PopupMenuButton<String>(
                 icon: Icon(
-                  Icons.more_horiz,
+                  Icons.more_vert,
                   color: Colors.grey[600],
                   size: 20,
                 ),
