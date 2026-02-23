@@ -6,6 +6,8 @@ import 'package:path/path.dart' as path;
 import '../models/hobby.dart';
 import '../models/hobby_memo.dart';
 import '../models/hobby_node.dart';
+import '../providers/hobby_list_provider.dart';
+import '../providers/habit_log_provider.dart';
 import '../services/memo_service.dart';
 import '../shared/widgets/image_viewer.dart';
 import 'edit_hobby_screen.dart';
@@ -23,25 +25,56 @@ class DetailHobbyScreen extends ConsumerStatefulWidget {
 
 class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
   File? _imageFile;
+  File? _headerImageFile;
   int _memoCount = 0;
   List<HobbyMemo> _memos = [];
-  Map<String, HobbyNode> _nodeMap = {}; // ノードIDからノード情報へのマップ
+  Map<String, HobbyNode> _nodeMap = {};
+  final ScrollController _scrollController = ScrollController();
+  bool _isScrolledPastHeader = false;
+
+  // ヘッダー画像のうち AppBar より下に見える部分の高さ
+  static const double _headerVisibleHeight = 60.0;
 
   @override
   void initState() {
     super.initState();
-    _loadImage();
+    _loadImages();
     _loadMemos();
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _loadImage() async {
+  void _onScroll() {
+    final scrolled = _scrollController.offset > _headerVisibleHeight;
+    if (scrolled != _isScrolledPastHeader) {
+      setState(() => _isScrolledPastHeader = scrolled);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadImages() async {
     final dir = await getApplicationDocumentsDirectory();
+
+    // アイコン画像
     final imagePath = path.join(dir.path, 'images', widget.hobby.imageFileName);
-    final file = File(imagePath);
-    if (file.existsSync()) {
-      setState(() {
-        _imageFile = file;
-      });
+    final imageFile = File(imagePath);
+    if (imageFile.existsSync()) {
+      setState(() => _imageFile = imageFile);
+    }
+
+    // ヘッダー画像
+    if (widget.hobby.headerImageFileName != null) {
+      final headerPath =
+          path.join(dir.path, 'headers', widget.hobby.headerImageFileName!);
+      final headerFile = File(headerPath);
+      if (headerFile.existsSync()) {
+        setState(() => _headerImageFile = headerFile);
+      }
     }
   }
 
@@ -75,213 +108,262 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: _buildNavButton(
+          icon: Icons.arrow_back,
+          onPressed: () => Navigator.pop(context),
+          showBackground: false,
+        ),
+        title: Text(
+          widget.hobby.title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          Builder(builder: (context) {
+            final hobby = ref.watch(hobbyListProvider).firstWhere(
+              (h) => h.id == widget.hobby.id,
+              orElse: () => widget.hobby,
+            );
+            return PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.black),
+              onSelected: (value) {
+                if (value == 'edit') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EditHobbyScreen(hobby: widget.hobby),
+                    ),
+                  );
+                } else if (value == 'toggle_habit') {
+                  ref.read(hobbyListProvider.notifier).update(
+                    hobby.copyWith(isHabitTracked: !hobby.isHabitTracked),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        hobby.isHabitTracked
+                            ? '習慣の記録を解除しました'
+                            : '習慣として記録するように設定しました',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem<String>(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 18),
+                      SizedBox(width: 10),
+                      Text('編集'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'toggle_habit',
+                  child: Row(
+                    children: [
+                      Icon(
+                        hobby.isHabitTracked
+                            ? Icons.repeat_on_outlined
+                            : Icons.repeat,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(hobby.isHabitTracked
+                          ? '習慣の記録を解除'
+                          : '習慣として記録する'),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }),
+        ],
+      ),
       body: Stack(
         children: [
           // メインコンテンツ
           CustomScrollView(
+            controller: _scrollController,
             slivers: [
-              // シンプルなAppBar
-              SliverAppBar(
-                backgroundColor: Colors.white,
-                elevation: 0,
-                pinned: true,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                title: Text(
-                  widget.hobby.title,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.black),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => EditHobbyScreen(hobby: widget.hobby),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              
-              // プロフィール情報
               SliverToBoxAdapter(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      
-                      // プロフィール画像と基本情報
-                      Row(
-                        children: [
-                          // 大きなプロフィール画像
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Hero(
-                              tag: 'hobby_image_${widget.hobby.id}',
-                              child: Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(20),
-                                  color: Colors.grey[200],
-                                  image: _imageFile != null
-                                      ? DecorationImage(
-                                          image: FileImage(_imageFile!),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
-                                ),
-                                child: _imageFile == null
-                                    ? Icon(Icons.broken_image, size: 30, color: Colors.grey[600])
-                                    : null,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // YouTubeスタイル: 角丸カード型ヘッダー画像
+                    if (_headerImageFile != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: GestureDetector(
+                          onTap: () =>
+                              ImageViewer.show(context, _headerImageFile!),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: AspectRatio(
+                              aspectRatio: 2.5,
+                              child: Image.file(
+                                _headerImageFile!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
                               ),
                             ),
                           ),
-                          const Spacer(),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // 趣味名とメタ情報
-                      Text(
-                        widget.hobby.title,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
                         ),
                       ),
-                      
-                      
                       const SizedBox(height: 16),
-                      
-                      // メモ内容
-                      if (widget.hobby.memo != null && widget.hobby.memo!.isNotEmpty)
-                        Text(
-                          widget.hobby.memo!,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.black87,
-                            height: 1.4,
-                          ),
-                        )
-                      else
-                        Text(
-                          'この趣味についてのメモはまだありません。',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // 統計情報（Twitter風）
-                      Row(
+                    ],
+
+                    // アイコン + タイトル・統計を横並びに
+                    Padding(
+                      padding: EdgeInsets.only(
+                        top: _headerImageFile == null ? 20 : 0,
+                        left: 16,
+                        right: 16,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          _buildStatItem('追加日', _getFormattedDate()),
-                          const SizedBox(width: 20),
-                          _buildStatItem('メモ', '$_memoCount'),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 30),
-                      
-                      // 境界線
-                      Container(
-                        height: 1,
-                        color: Colors.grey[200],
-                      ),
-                      
-                      
-                      const SizedBox(height: 30),
-                      
-                      // メモ一覧セクション
-                      const Text(
-                        'メモ',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // メモ一覧
-                      if (_memos.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-                          child: Center(
+                          _buildProfileIcon(),
+                          const SizedBox(width: 16),
+                          Expanded(
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.chat_bubble_outline, size: 60, color: Colors.grey[300]),
-                                const SizedBox(height: 16),
                                 Text(
-                                  'まだメモがありません',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
+                                  widget.hobby.title,
+                                  style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
+                                    color: Colors.black,
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 8),
-                                Text(
-                                  '最初のメモを追加して、趣味の記録を始めましょう。',
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 15,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
+                                Builder(builder: (context) {
+                                  final habitLogs = ref.watch(habitLogListProvider);
+                                  final habitCount = habitLogs
+                                      .where((l) => l.hobbyId == widget.hobby.id)
+                                      .length;
+                                  return Row(
+                                    children: [
+                                      _buildStatItem('追加日', _getFormattedDate()),
+                                      const SizedBox(width: 16),
+                                      _buildStatItem('メモ', '$_memoCount'),
+                                      if (habitCount > 0) ...[
+                                        const SizedBox(width: 16),
+                                        _buildStatItem('習慣', '$habitCount'),
+                                      ],
+                                    ],
+                                  );
+                                }),
                               ],
                             ),
                           ),
-                        )
-                      else
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              top: BorderSide(color: Colors.grey[200]!),
+                        ],
+                      ),
+                    ),
+
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 16),
+
+                          // 説明文（あれば表示）
+                          if (widget.hobby.memo != null &&
+                              widget.hobby.memo!.isNotEmpty) ...[
+                            Text(
+                              widget.hobby.memo!,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.black87,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 30),
+                          ],
+
+                          // メモ一覧セクション
+                          const Text(
+                            'メモ',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
                             ),
                           ),
-                          child: Column(
-                            children: _memos.map((memo) => _buildMemoItem(memo)).toList(),
-                          ),
-                        ),
-                      
-                      const SizedBox(height: 100), // フローティングボタンのための余白
-                    ],
-                  ),
+
+                          const SizedBox(height: 16),
+
+                          // メモ一覧
+                          if (_memos.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 40, horizontal: 20),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.chat_bubble_outline,
+                                        size: 60, color: Colors.grey[300]),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'まだメモがありません',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      '最初のメモを追加して、趣味の記録を始めましょう。',
+                                      style: TextStyle(
+                                        color: Colors.grey[500],
+                                        fontSize: 15,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(color: Colors.grey[200]!),
+                                ),
+                              ),
+                              child: Column(
+                                children: _memos
+                                    .map((memo) => _buildMemoItem(memo))
+                                    .toList(),
+                              ),
+                            ),
+
+                          const SizedBox(height: 100), // フローティングボタンのための余白
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          
+
           // フローティングメモ追加ボタン
           Positioned(
             bottom: 20,
@@ -294,9 +376,8 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
                     builder: (_) => AddMemoScreen(hobby: widget.hobby),
                   ),
                 );
-                
+
                 if (result == true) {
-                  // メモが追加されたらUIを更新
                   _loadMemos();
                 }
               },
@@ -309,6 +390,66 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
     );
   }
   
+  Widget _buildNavButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required bool showBackground,
+  }) {
+    return Container(
+      margin: const EdgeInsets.all(8),
+      decoration: showBackground
+          ? BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              shape: BoxShape.circle,
+            )
+          : null,
+      child: IconButton(
+        icon: Icon(icon, color: Colors.black),
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      ),
+    );
+  }
+
+  Widget _buildProfileIcon() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Hero(
+        tag: 'hobby_image_${widget.hobby.id}',
+        child: Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.grey[200],
+            image: _imageFile != null
+                ? DecorationImage(
+                    image: FileImage(_imageFile!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: _imageFile == null
+              ? Icon(Icons.broken_image, size: 30, color: Colors.grey[600])
+              : null,
+        ),
+      ),
+    );
+  }
+
+
   Widget _buildStatItem(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,8 +582,8 @@ class _DetailHobbyScreenState extends ConsumerState<DetailHobbyScreen> {
           
           const SizedBox(height: 8),
           
-          // メモ内容
-          Text(
+          // メモ内容（テキスト選択可能）
+          SelectableText(
             memo.content,
             style: const TextStyle(
               fontSize: 15,

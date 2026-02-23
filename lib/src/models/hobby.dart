@@ -6,26 +6,35 @@ class Hobby {
   final String title;
   final String? memo;
   final String imageFileName;
+  final String? headerImageFileName; // ヘッダーバナー画像
   final String categoryId;
   final int order;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<HobbyNode> children; // 階層構造用の子ノード
+  final bool isHabitTracked; // デイリー習慣トラッカー
 
   Hobby({
     required this.id,
     required this.title,
     this.memo,
     required this.imageFileName,
+    this.headerImageFileName,
     required this.categoryId,
     required this.order,
     required this.createdAt,
     required this.updatedAt,
     this.children = const [],
+    this.isHabitTracked = false,
   });
 
   String getImagePath(String basePath) {
     return '$basePath/images/$imageFileName';
+  }
+
+  String? getHeaderImagePath(String basePath) {
+    if (headerImageFileName == null) return null;
+    return '$basePath/headers/$headerImageFileName';
   }
 
   Map<String, dynamic> toJson() => {
@@ -33,11 +42,13 @@ class Hobby {
     'title': title,
     'memo': memo,
     'imageFileName': imageFileName,
+    'headerImageFileName': headerImageFileName,
     'categoryId': categoryId,
     'order': order,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
     'children': children.map((c) => c.toJson()).toList(),
+    'isHabitTracked': isHabitTracked,
   };
 
   factory Hobby.fromJson(Map<String, dynamic> json) {
@@ -47,6 +58,7 @@ class Hobby {
       title: json['title'] as String,
       memo: json['memo'] as String?,
       imageFileName: json['imageFileName'] as String,
+      headerImageFileName: json['headerImageFileName'] as String?,
       categoryId: json['categoryId'] as String? ?? 'default_all', // 既存データの互換性
       order: json['order'] as int? ?? 0, // 既存データの互換性
       createdAt: json['createdAt'] != null
@@ -59,6 +71,7 @@ class Hobby {
               ?.map((e) => HobbyNode.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      isHabitTracked: json['isHabitTracked'] as bool? ?? false,
     );
   }
 
@@ -67,20 +80,26 @@ class Hobby {
     String? title,
     String? memo,
     String? imageFileName,
+    String? headerImageFileName,
+    bool clearHeaderImage = false,
     String? categoryId,
     int? order,
     List<HobbyNode>? children,
+    bool? isHabitTracked,
   }) {
     return Hobby(
       id: id,
       title: title ?? this.title,
       memo: memo ?? this.memo,
       imageFileName: imageFileName ?? this.imageFileName,
+      headerImageFileName:
+          clearHeaderImage ? null : (headerImageFileName ?? this.headerImageFileName),
       categoryId: categoryId ?? this.categoryId,
       order: order ?? this.order,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
       children: children ?? this.children,
+      isHabitTracked: isHabitTracked ?? this.isHabitTracked,
     );
   }
 

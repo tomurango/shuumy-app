@@ -266,9 +266,9 @@ class _AddHobbyScreenState extends ConsumerState<AddHobbyScreen> {
 
                   const SizedBox(height: 30),
 
-                  // メモセクション
+                  // 説明セクション
                   const Text(
-                    "メモ（任意）",
+                    "説明（任意）",
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

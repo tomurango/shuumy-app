@@ -27,6 +27,9 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
 
   File? _selectedImage;
   File? _currentImage;
+  File? _selectedHeaderImage;
+  File? _currentHeaderImage;
+  bool _clearHeaderImage = false;
   late String _selectedCategoryId;
 
   @override
@@ -35,17 +38,27 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
     _titleController = TextEditingController(text: widget.hobby.title);
     _memoController = TextEditingController(text: widget.hobby.memo ?? '');
     _selectedCategoryId = widget.hobby.categoryId;
-    _loadCurrentImage();
+    _loadCurrentImages();
   }
 
-  Future<void> _loadCurrentImage() async {
+  Future<void> _loadCurrentImages() async {
     final dir = await getApplicationDocumentsDirectory();
+
+    // アイコン画像
     final imagePath = path.join(dir.path, 'images', widget.hobby.imageFileName);
-    final file = File(imagePath);
-    if (file.existsSync()) {
-      setState(() {
-        _currentImage = file;
-      });
+    final imageFile = File(imagePath);
+    if (imageFile.existsSync()) {
+      setState(() => _currentImage = imageFile);
+    }
+
+    // ヘッダー画像
+    if (widget.hobby.headerImageFileName != null) {
+      final headerPath =
+          path.join(dir.path, 'headers', widget.hobby.headerImageFileName!);
+      final headerFile = File(headerPath);
+      if (headerFile.existsSync()) {
+        setState(() => _currentHeaderImage = headerFile);
+      }
     }
   }
 
@@ -59,6 +72,26 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
         _selectedImage = File(pickedFile.path);
       });
     }
+  }
+
+  Future<void> _pickHeaderImage() async {
+    final pickedFile = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+    );
+    if (pickedFile != null) {
+      setState(() {
+        _selectedHeaderImage = File(pickedFile.path);
+        _clearHeaderImage = false;
+      });
+    }
+  }
+
+  void _removeHeaderImage() {
+    setState(() {
+      _selectedHeaderImage = null;
+      _currentHeaderImage = null;
+      _clearHeaderImage = true;
+    });
   }
 
   @override
@@ -101,11 +134,11 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
               }
 
               String imageFileName = widget.hobby.imageFileName;
-              
+
               if (_selectedImage != null) {
                 final savedImageFile = await HobbyStorageService.saveImageToLocalDirectory(_selectedImage!);
                 imageFileName = path.basename(savedImageFile.path);
-                
+
                 final dir = await getApplicationDocumentsDirectory();
                 final oldImagePath = path.join(dir.path, 'images', widget.hobby.imageFileName);
                 final oldImageFile = File(oldImagePath);
@@ -114,15 +147,41 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
                 }
               }
 
+              // ヘッダー画像の処理
+              String? headerImageFileName = widget.hobby.headerImageFileName;
+              if (_selectedHeaderImage != null) {
+                // 古いヘッダー画像を削除
+                if (headerImageFileName != null) {
+                  final dir = await getApplicationDocumentsDirectory();
+                  final oldPath = path.join(dir.path, 'headers', headerImageFileName);
+                  final oldFile = File(oldPath);
+                  if (oldFile.existsSync()) await oldFile.delete();
+                }
+                final savedFile = await HobbyStorageService.saveHeaderImageToLocalDirectory(_selectedHeaderImage!);
+                headerImageFileName = path.basename(savedFile.path);
+              } else if (_clearHeaderImage) {
+                // ヘッダー画像を削除
+                if (headerImageFileName != null) {
+                  final dir = await getApplicationDocumentsDirectory();
+                  final oldPath = path.join(dir.path, 'headers', headerImageFileName);
+                  final oldFile = File(oldPath);
+                  if (oldFile.existsSync()) await oldFile.delete();
+                }
+                headerImageFileName = null;
+              }
+
               final updatedHobby = Hobby(
                 id: widget.hobby.id,
                 title: title,
                 memo: memo.isEmpty ? null : memo,
                 imageFileName: imageFileName,
+                headerImageFileName: headerImageFileName,
                 categoryId: _selectedCategoryId,
-                order: widget.hobby.order, // 順序は変更しない
+                order: widget.hobby.order,
                 createdAt: widget.hobby.createdAt,
                 updatedAt: DateTime.now(),
+                children: widget.hobby.children,
+                isHabitTracked: widget.hobby.isHabitTracked,
               );
 
               ref.read(hobbyListProvider.notifier).update(updatedHobby);
@@ -164,7 +223,7 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 画像選択セクション
+                  // アイコン画像選択セクション
                   Row(
                     children: [
                       GestureDetector(
@@ -230,6 +289,79 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
                     ],
                   ),
 
+                  const SizedBox(height: 24),
+
+                  // ヘッダー画像選択セクション
+                  const Text(
+                    "ヘッダー画像（任意）",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: _pickHeaderImage,
+                    child: Container(
+                      width: double.infinity,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey[100],
+                        border: Border.all(
+                          color: Colors.grey[300]!,
+                          width: 2,
+                        ),
+                      ),
+                      child: _selectedHeaderImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.file(
+                                _selectedHeaderImage!,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : _currentHeaderImage != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.file(
+                                    _currentHeaderImage!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.panorama_outlined,
+                                      size: 32,
+                                      color: Colors.grey[500],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'タップしてヘッダー画像を選択',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                    ),
+                  ),
+                  if (_currentHeaderImage != null || _selectedHeaderImage != null) ...[
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: _removeHeaderImage,
+                      icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                      label: const Text(
+                        'ヘッダー画像を削除',
+                        style: TextStyle(color: Colors.red, fontSize: 13),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 30),
 
                   // 趣味名セクション
@@ -270,9 +402,9 @@ class _EditHobbyScreenState extends ConsumerState<EditHobbyScreen> {
 
                   const SizedBox(height: 30),
 
-                  // メモセクション
+                  // 説明セクション
                   const Text(
-                    "メモ（任意）",
+                    "説明（任意）",
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

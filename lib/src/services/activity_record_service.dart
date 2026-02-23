@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../models/habit_log.dart';
 import '../models/hobby.dart';
 import '../models/hobby_memo.dart';
+import 'habit_log_service.dart';
 import 'memo_service.dart';
 
 /// 期間選択の種類
@@ -100,10 +102,18 @@ class ActivityRecordService {
         final periodMemos = _filterMemosByPeriod(hobbyMemos, effectivePeriodInfo);
         allMemos.addAll(periodMemos);
       }
-      
+
+      // 期間内の習慣ログを取得（isHabitTracked=true の趣味のみ）
+      final habitHobbies = categoryHobbies.where((h) => h.isHabitTracked).toList();
+      final habitLogs = await HabitLogService.loadLogsForPeriod(
+        hobbyIds: habitHobbies.map((h) => h.id).toList(),
+        startDate: effectivePeriodInfo.startDate,
+        endDate: effectivePeriodInfo.endDate,
+      );
+
       // 統計情報を計算
-      final statistics = _calculateStatistics(allMemos, categoryHobbies);
-      
+      final statistics = _calculateStatistics(allMemos, habitLogs, categoryHobbies);
+
       return statistics;
       
     } catch (e) {
@@ -138,42 +148,58 @@ class ActivityRecordService {
     }).toList();
   }
   
-  /// 統計情報を計算
-  static ActivityStatistics _calculateStatistics(List<HobbyMemo> memos, List<Hobby> hobbies) {
+  /// 統計情報を計算（メモ＋習慣ログを統合）
+  static ActivityStatistics _calculateStatistics(
+    List<HobbyMemo> memos,
+    List<HabitLog> habitLogs,
+    List<Hobby> hobbies,
+  ) {
     // 趣味別活動カウント
     final hobbyActivityCount = <String, int>{};
     final dailyCount = <DateTime, int>{};
     final dailyHobbies = <DateTime, List<String>>{};
     final activeDays = <DateTime>{};
-    
+
     // 趣味のマッピングを作成
     final hobbyMap = {for (final hobby in hobbies) hobby.id: hobby.title};
-    
+
     for (final memo in memos) {
       // 趣味別カウント
       final hobbyTitle = hobbyMap[memo.hobbyId] ?? '不明な趣味';
       hobbyActivityCount[hobbyTitle] = (hobbyActivityCount[hobbyTitle] ?? 0) + 1;
-      
+
       // 日別カウント
       final date = DateTime(memo.createdAt.year, memo.createdAt.month, memo.createdAt.day);
       dailyCount[date] = (dailyCount[date] ?? 0) + 1;
-      
+
       // 日別趣味リスト
-      if (!dailyHobbies.containsKey(date)) {
-        dailyHobbies[date] = [];
-      }
+      dailyHobbies.putIfAbsent(date, () => []);
       if (!dailyHobbies[date]!.contains(hobbyTitle)) {
         dailyHobbies[date]!.add(hobbyTitle);
       }
-      
+
       activeDays.add(date);
     }
-    
+
+    // 習慣ログをカレンダーに統合
+    for (final log in habitLogs) {
+      final hobbyTitle = hobbyMap[log.hobbyId] ?? '不明な趣味';
+      final date = log.date;
+
+      // 習慣ログは dailyHobbies（カレンダードット）に追加
+      dailyHobbies.putIfAbsent(date, () => []);
+      if (!dailyHobbies[date]!.contains(hobbyTitle)) {
+        dailyHobbies[date]!.add(hobbyTitle);
+        dailyCount[date] = (dailyCount[date] ?? 0) + 1;
+        activeDays.add(date);
+      }
+    }
+
     // 最新のメモを取得（最大10件）
     final sortedMemos = List<HobbyMemo>.from(memos);
     sortedMemos.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     final recentMemos = sortedMemos.take(10).toList();
-    
+
     return ActivityStatistics(
       totalMemos: memos.length,
       totalActiveDays: activeDays.length,

@@ -22,4 +22,21 @@ class HobbyStorageService {
     final newImage = await originalImage.copy(newPath);
     return newImage;
   }
+
+  /// 選択されたヘッダー画像ファイルをアプリ内部の headers フォルダにコピーして返す
+  static Future<File> saveHeaderImageToLocalDirectory(File originalImage) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final headerDir = Directory('${appDir.path}/headers');
+
+    if (!await headerDir.exists()) {
+      await headerDir.create(recursive: true);
+    }
+
+    final fileExtension = originalImage.path.split('.').last;
+    final newFileName = '${_uuid.v4()}.$fileExtension';
+    final newPath = '${headerDir.path}/$newFileName';
+
+    final newImage = await originalImage.copy(newPath);
+    return newImage;
+  }
 }

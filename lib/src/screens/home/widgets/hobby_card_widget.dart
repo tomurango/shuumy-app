@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/hobby.dart';
+import '../../../providers/habit_log_provider.dart';
 import '../../../services/memo_service.dart';
 import '../../../shared/widgets/hobby_options_sheet.dart';
 import '../../detail_hobby_screen.dart';
@@ -163,22 +164,69 @@ class HobbyCardWidget extends ConsumerWidget {
                 ),
                 ),
                 
-                // 右端：オプションボタン
-                Container(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: IconButton(
-                  onPressed: () => HobbyOptionsSheet.show(context, hobby, ref, onDelete: onDelete),
-                  icon: Icon(
-                    Icons.more_vert,
-                    color: Colors.grey[600],
-                    size: 20,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
-                  ),
-                  padding: const EdgeInsets.all(6),
-                  ),
+                // 右端：習慣トラッカーボタン（isHabitTracked=trueのみ表示）+ オプションボタン
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (hobby.isHabitTracked) ...[
+                      Builder(
+                        builder: (context) {
+                          final habitLogs = ref.watch(habitLogListProvider);
+                          final _ = habitLogs; // watch して再描画
+                          final hasLog = ref
+                              .read(habitLogListProvider.notifier)
+                              .hasLogForToday(hobby.id);
+                          return IconButton(
+                            onPressed: () async {
+                              final added = await ref
+                                  .read(habitLogListProvider.notifier)
+                                  .toggleToday(hobby.id);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      added ? '今日の記録を追加しました' : '今日の記録を削除しました',
+                                    ),
+                                    duration: const Duration(seconds: 1),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                            icon: Icon(
+                              hasLog
+                                  ? Icons.check_circle
+                                  : Icons.check_circle_outline,
+                              color: hasLog
+                                  ? const Color(0xFF009977)
+                                  : Colors.grey[400],
+                              size: 22,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            tooltip: hasLog ? '今日の記録を取り消す' : '今日の習慣を記録',
+                          );
+                        },
+                      ),
+                    ],
+                    IconButton(
+                      onPressed: () =>
+                          HobbyOptionsSheet.show(context, hobby, ref, onDelete: onDelete),
+                      icon: Icon(
+                        Icons.more_vert,
+                        color: Colors.grey[600],
+                        size: 20,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      padding: const EdgeInsets.all(6),
+                    ),
+                  ],
                 ),
               ],
             ),
