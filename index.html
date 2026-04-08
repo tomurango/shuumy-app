@@ -3,209 +3,641 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>シューマイ - 趣味管理アプリ サポート</title>
+    <title>シューマイ - 趣味管理アプリ</title>
+    <meta name="description" content="シューマイは、あなたの趣味を記録し、活動を振り返るためのアプリです。メモ・写真・習慣トラッカー・樹形図で趣味ライフを整理します。">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
+            font-family: 'Noto Sans JP', -apple-system, sans-serif;
+            line-height: 1.8;
             color: #333;
-            background-color: #f8f9fa;
+            background: #fff;
+            overflow-x: hidden;
         }
-        
-        .container {
-            max-width: 800px;
+
+        /* ===== ヒーロー ===== */
+        .hero {
+            position: relative;
+            background: linear-gradient(160deg, #e8f5f0 0%, #d4efe6 40%, #c0e8db 100%);
+            padding: 100px 24px 120px;
+            text-align: center;
+        }
+
+        .hero-inner {
+            max-width: 760px;
             margin: 0 auto;
-            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 60px;
         }
-        
-        .header {
-            background: linear-gradient(135deg, #009977, #00B386);
-            color: white;
-            padding: 40px 20px;
-            text-align: center;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 12px rgba(0, 153, 119, 0.3);
+
+        .hero-text {
+            flex: 1;
+            text-align: left;
+            max-width: 380px;
         }
-        
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 700;
+
+        .hero-visual {
+            flex-shrink: 0;
+            perspective: 800px;
         }
-        
-        .header p {
-            font-size: 1.2em;
-            opacity: 0.9;
+
+        .hero-mockup {
+            width: 220px;
+            border-radius: 28px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+            transform: rotateY(-8deg) rotateX(2deg);
+            transition: transform 0.4s ease;
         }
-        
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 30px;
+
+        .hero-mockup:hover {
+            transform: rotateY(0deg) rotateX(0deg);
         }
-        
-        .card h2 {
-            color: #009977;
+
+        .hero-logo {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
             margin-bottom: 20px;
-            font-size: 1.8em;
-            border-bottom: 2px solid #00B386;
-            padding-bottom: 10px;
+            box-shadow: 0 8px 32px rgba(0, 153, 119, 0.2);
         }
-        
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
+
+        .hero h1 {
+            font-size: 2.8em;
+            font-weight: 900;
+            color: #1a3a2f;
+            letter-spacing: 0.04em;
+            margin-bottom: 16px;
         }
-        
-        .feature {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
+
+        .hero-subtitle {
+            font-size: 1.1em;
+            color: #3d6b5a;
+            font-weight: 400;
+            max-width: 400px;
+            margin-bottom: 36px;
+            line-height: 1.9;
+        }
+
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #009977;
+            color: #fff;
+            padding: 16px 36px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1em;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(0, 153, 119, 0.3);
+        }
+
+        .hero-cta:hover {
+            background: #007a63;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(0, 153, 119, 0.35);
+        }
+
+        .hero-cta svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* 波形区切り */
+        .wave {
+            display: block;
+            width: 100%;
+            line-height: 0;
+        }
+
+        .wave svg {
+            width: 100%;
+            height: 60px;
+            display: block;
+        }
+
+        /* ===== スクリーンショットショーケース ===== */
+        .showcase {
+            background: #fff;
+            padding: 80px 24px 60px;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
         }
-        
-        .feature:hover {
-            transform: translateY(-5px);
+
+        .showcase-scroll {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            max-width: 900px;
+            margin: 0 auto;
         }
-        
+
+        .phone-frame {
+            transition: transform 0.3s;
+        }
+
+        .phone-frame:hover {
+            transform: translateY(-8px);
+        }
+
+        .phone-frame img {
+            width: 100%;
+            border-radius: 24px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .phone-label {
+            margin-top: 12px;
+            font-size: 0.85em;
+            color: #888;
+            font-weight: 500;
+        }
+
+        /* ===== セクション共通 ===== */
+        .section {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        .section-label {
+            display: inline-block;
+            background: #e8f5f0;
+            color: #009977;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 2em;
+            font-weight: 900;
+            color: #1a3a2f;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .section-desc {
+            font-size: 1em;
+            color: #666;
+            max-width: 560px;
+            margin-bottom: 48px;
+        }
+
+        /* ===== 機能カード ===== */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: #fafcfb;
+            border: 1px solid #e8f0ed;
+            border-radius: 20px;
+            padding: 32px 24px;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 153, 119, 0.06);
+            border-color: #c8e6df;
+        }
+
         .feature-icon {
-            font-size: 3em;
-            margin-bottom: 15px;
+            width: 44px;
+            height: 44px;
+            background: #e8f5f0;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            color: #009977;
         }
-        
-        .btn {
+
+        .feature-icon .material-icons-outlined {
+            font-size: 24px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.05em;
+            font-weight: 700;
+            color: #1a3a2f;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            font-size: 0.88em;
+            color: #777;
+            line-height: 1.7;
+        }
+
+        /* ===== プレミアム ===== */
+        .premium-section {
+            background: linear-gradient(160deg, #f0faf7 0%, #e4f3ed 100%);
+        }
+
+        .premium-inner {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 80px 24px;
+            text-align: center;
+        }
+
+        .premium-badge {
             display: inline-block;
             background: #009977;
-            color: white;
-            padding: 15px 30px;
-            text-decoration: none;
-            border-radius: 8px;
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            margin-bottom: 16px;
+        }
+
+        .premium-title {
+            font-size: 1.8em;
+            font-weight: 900;
+            color: #1a3a2f;
+            margin-bottom: 12px;
+        }
+
+        .premium-desc {
+            color: #666;
+            margin-bottom: 32px;
+        }
+
+        .premium-tags {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .premium-tag {
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 24px;
+            font-size: 0.9em;
+            color: #009977;
             font-weight: 600;
-            transition: background-color 0.3s ease;
-            margin: 10px;
+            border: 1px solid #c8e6df;
+            box-shadow: 0 2px 8px rgba(0, 153, 119, 0.04);
         }
-        
-        .btn:hover {
+
+        /* ===== 理念 ===== */
+        .philosophy {
+            text-align: center;
+        }
+
+        .philosophy-text {
+            font-size: 1.2em;
+            color: #3d6b5a;
+            max-width: 540px;
+            margin: 0 auto;
+            line-height: 2;
+            font-weight: 500;
+        }
+
+        /* ===== CTA ===== */
+        .cta {
+            text-align: center;
+            padding: 80px 24px;
+        }
+
+        .cta h2 {
+            font-size: 1.8em;
+            font-weight: 900;
+            color: #1a3a2f;
+            margin-bottom: 12px;
+        }
+
+        .cta p {
+            color: #666;
+            margin-bottom: 32px;
+        }
+
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #009977;
+            color: #fff;
+            padding: 18px 44px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.05em;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(0, 153, 119, 0.25);
+        }
+
+        .cta-btn:hover {
             background: #007a63;
+            transform: translateY(-2px);
         }
-        
-        .btn-outline {
-            background: transparent;
-            border: 2px solid #009977;
+
+        /* ===== フッター ===== */
+        .footer {
+            background: #f8faf9;
+            text-align: center;
+            padding: 48px 24px;
+            border-top: 1px solid #e8f0ed;
+        }
+
+        .footer-links {
+            margin-bottom: 16px;
+        }
+
+        .footer-links a {
+            color: #009977;
+            text-decoration: none;
+            margin: 0 16px;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-contact {
+            margin-bottom: 16px;
+        }
+
+        .footer-contact a {
+            color: #888;
+            text-decoration: none;
+            font-size: 0.85em;
+        }
+
+        .footer-contact a:hover {
             color: #009977;
         }
-        
-        .btn-outline:hover {
-            background: #009977;
-            color: white;
+
+        .footer-copy {
+            color: #bbb;
+            font-size: 0.8em;
         }
-        
-        .footer {
-            text-align: center;
-            padding: 30px;
-            color: #666;
-            border-top: 1px solid #eee;
-            margin-top: 40px;
-        }
-        
-        .links {
-            text-align: center;
-            margin: 30px 0;
-        }
-        
+
+        /* ===== レスポンシブ ===== */
         @media (max-width: 768px) {
-            .header h1 {
+            .hero {
+                padding: 70px 20px 100px;
+            }
+
+            .hero-inner {
+                justify-content: center;
+            }
+
+            .hero-text {
+                text-align: center;
+                max-width: 100%;
+            }
+
+            .hero-subtitle {
+                margin: 0 auto 36px;
+            }
+
+            .hero-visual {
+                display: none;
+            }
+
+            .hero h1 {
                 font-size: 2em;
             }
-            
-            .header p {
-                font-size: 1em;
-            }
-            
-            .features {
+
+            .features-grid {
                 grid-template-columns: 1fr;
+                gap: 16px;
             }
+
+            .showcase-scroll {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .section {
+                padding: 60px 20px;
+            }
+
+            .section-title {
+                font-size: 1.5em;
+            }
+
+            .premium-inner {
+                padding: 60px 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 1.7em;
+            }
+
+            .showcase-scroll {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+        }
+
+        /* ===== フェードインアニメーション ===== */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>シューマイ</h1>
-            <p>シンプルで美しい趣味管理アプリ</p>
-        </div>
 
-        <div class="card">
-            <h2>🎯 アプリについて</h2>
-            <p>シューマイは、あなたの趣味を美しく整理し、活動記録を残すためのアプリです。直感的な操作で、趣味ライフをもっと楽しくします。</p>
+    <!-- ヒーロー -->
+    <section class="hero">
+        <div class="hero-inner">
+            <div class="hero-text">
+                <img src="assets/icons/app_icon.jpeg" alt="シューマイ" class="hero-logo">
+                <h1>シューマイ</h1>
+                <p class="hero-subtitle">考えたこと、やったことが<br>流れて積み上がらない。<br>そんなもどかしさに寄り添うアプリ。</p>
+                <a href="https://apps.apple.com/jp/app/%E3%82%B7%E3%83%A5%E3%83%BC%E3%83%9E%E3%82%A4/id6747564159" class="hero-cta">
+                    <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                    App Store でダウンロード
+                </a>
+            </div>
+            <div class="hero-visual">
+                <img src="images/screen_home.png" alt="シューマイのホーム画面" class="hero-mockup">
+            </div>
         </div>
+    </section>
 
-        <div class="features">
-            <div class="feature">
-                <div class="feature-icon">📱</div>
-                <h3>シンプル操作</h3>
-                <p>直感的なインターフェースで誰でも簡単に使えます</p>
+    <!-- 波形 -->
+    <div class="wave">
+        <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
+            <path d="M0,60 C360,0 1080,0 1440,60 L1440,60 L0,60 Z" fill="#fff"/>
+        </svg>
+    </div>
+
+    <!-- スクリーンショット -->
+    <section class="showcase fade-in">
+        <div class="showcase-scroll">
+            <div class="phone-frame">
+                <img src="images/screen_home.png" alt="ホーム画面">
+                <div class="phone-label">ホーム</div>
             </div>
-            <div class="feature">
-                <div class="feature-icon">📷</div>
-                <h3>写真付きメモ</h3>
-                <p>思い出の写真と一緒に活動記録を保存できます</p>
+            <div class="phone-frame">
+                <img src="images/screen_detail.png" alt="趣味詳細">
+                <div class="phone-label">趣味詳細</div>
             </div>
-            <div class="feature">
-                <div class="feature-icon">🎨</div>
-                <h3>カスタマイズ</h3>
-                <p>背景画像を変更して自分らしくパーソナライズ</p>
+            <div class="phone-frame">
+                <img src="images/screen_habit.png" alt="習慣トラッカー">
+                <div class="phone-label">習慣</div>
             </div>
-            <div class="feature">
-                <div class="feature-icon">🔒</div>
+            <div class="phone-frame">
+                <img src="images/screen_tree.png" alt="樹形図">
+                <div class="phone-label">樹形図</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 機能紹介 -->
+    <section class="section fade-in">
+        <span class="section-label">FEATURES</span>
+        <h2 class="section-title">趣味を、もっと豊かに</h2>
+        <p class="section-desc">記録して、振り返って、整理する。続けるほどに、あなたの趣味が積み上がります。</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><span class="material-icons-outlined">edit_note</span></div>
+                <h3>メモと写真</h3>
+                <p>活動の記録を写真付きメモで残せます。ふとした時に振り返る楽しみ。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><span class="material-icons-outlined">check_circle</span></div>
+                <h3>習慣トラッカー</h3>
+                <p>日々の習慣をワンタップで記録。過去の記録も簡単に修正できます。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><span class="material-icons-outlined">calendar_month</span></div>
+                <h3>活動カレンダー</h3>
+                <p>カレンダーで活動を一覧表示。週間・月間・年間で傾向を把握。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><span class="material-icons-outlined">account_tree</span></div>
+                <h3>樹形図</h3>
+                <p>目標やスキルを階層構造で整理。進捗の可視化に。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><span class="material-icons-outlined">lock</span></div>
                 <h3>プライバシー</h3>
-                <p>全てのデータは端末内に保存で安心・安全</p>
+                <p>データは端末内に保存。アカウント不要で安心。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><span class="material-icons-outlined">crop</span></div>
+                <h3>画像トリミング</h3>
+                <p>アイコンやヘッダーを好きな範囲で切り取り。</p>
             </div>
         </div>
+    </section>
 
-        <div class="card">
-            <h2>📞 サポート・お問い合わせ</h2>
-            <p>アプリに関するご質問、不具合報告、機能のご要望などがございましたら、お気軽にお問い合わせください。</p>
-            
-            <div class="links">
-                <a href="mailto:shuumyapp@gmail.com" class="btn">📧 メールで問い合わせ</a>
-                <a href="[GOOGLE_FORM_URL]" class="btn btn-outline">📝 お問い合わせフォーム</a>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>📋 法的事項</h2>
-            <div class="links">
-                <a href="terms.html" class="btn btn-outline">利用規約</a>
-                <a href="privacy.html" class="btn btn-outline">プライバシーポリシー</a>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>📱 ダウンロード</h2>
-            <p>App Storeからダウンロードできます。</p>
-            <div class="links">
-                <a href="[APP_STORE_URL]" class="btn">App Store でダウンロード</a>
-            </div>
-        </div>
+    <!-- 波形 -->
+    <div class="wave">
+        <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
+            <path d="M0,0 C360,60 1080,60 1440,0 L1440,60 L0,60 Z" fill="#f0faf7"/>
+        </svg>
     </div>
 
-    <div class="footer">
-        <p>© 2025 シューマイ開発チーム. All rights reserved.</p>
-        <p>Version 1.0.0</p>
+    <!-- プレミアム -->
+    <section class="premium-section">
+        <div class="premium-inner fade-in">
+            <span class="premium-badge">PREMIUM</span>
+            <h2 class="premium-title">もっと便利に</h2>
+            <p class="premium-desc">プレミアムプランで、すべての機能を使いこなす。</p>
+            <div class="premium-tags">
+                <span class="premium-tag">カテゴリー管理</span>
+                <span class="premium-tag">背景画像</span>
+                <span class="premium-tag">全期間の活動記録</span>
+                <span class="premium-tag">樹形図の深い階層</span>
+                <span class="premium-tag">習慣ページ</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 波形 -->
+    <div class="wave">
+        <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
+            <path d="M0,60 C360,0 1080,0 1440,60 L1440,60 L0,60 Z" fill="#fff"/>
+        </svg>
     </div>
+
+    <!-- 理念 -->
+    <section class="section philosophy fade-in">
+        <span class="section-label">CONCEPT</span>
+        <h2 class="section-title">久しぶりでも、大丈夫</h2>
+        <p class="philosophy-text">
+            趣味を中断しても、<br>
+            再開したときに何をしていたか見えてくる。<br><br>
+            記録は、未来の自分への手がかり。<br>
+            シューマイは、あなたの「好き」を<br>
+            そっと積み上げるアプリです。
+        </p>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta fade-in">
+        <h2>今日から、記録を始めよう</h2>
+        <p>無料でダウンロードできます。</p>
+        <a href="https://apps.apple.com/jp/app/%E3%82%B7%E3%83%A5%E3%83%BC%E3%83%9E%E3%82%A4/id6747564159" class="cta-btn">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            App Store でダウンロード
+        </a>
+    </section>
+
+    <!-- フッター -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="terms.html">利用規約</a>
+            <a href="privacy.html">プライバシーポリシー</a>
+        </div>
+        <div class="footer-contact">
+            <a href="mailto:shuumyapp@gmail.com">お問い合わせ: shuumyapp@gmail.com</a>
+        </div>
+        <p class="footer-copy">&copy; 2026 tomurango. All rights reserved.</p>
+    </footer>
+
+    <!-- スクロールアニメーション -->
+    <script>
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+    </script>
+
 </body>
 </html>
