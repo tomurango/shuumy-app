@@ -4,40 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>シューマイ - 趣味管理アプリ</title>
-    <meta name="description" content="シューマイは、あなたの趣味を記録し、活動を振り返るためのアプリです。メモ・写真・習慣トラッカー・樹形図で趣味ライフを整理します。">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <meta name="description" content="シューマイは、あなたの趣味を記録し、活動を振り返るためのアプリです。考えたこと、やったことが流れて積み上がらない。そんなもどかしさに寄り添います。">
+    <!-- ファビコン -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <!-- OGP -->
+    <meta property="og:title" content="シューマイ - 趣味管理アプリ">
+    <meta property="og:description" content="考えたこと、やったことが流れて積み上がらない。そんなもどかしさに寄り添うアプリ。">
+    <meta property="og:image" content="https://shuumy.jp/images/ogp.png">
+    <meta property="og:url" content="https://shuumy.jp">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ja_JP">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="シューマイ - 趣味管理アプリ">
+    <meta name="twitter:description" content="考えたこと、やったことが流れて積み上がらない。そんなもどかしさに寄り添うアプリ。">
+    <meta name="twitter:image" content="https://shuumy.jp/images/ogp.png">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Noto Sans JP', -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
             line-height: 1.8;
-            color: #333;
-            background: #fff;
+            color: #1a4a38;
+            background: #e8f5f0;
             overflow-x: hidden;
+        }
+
+        /* ===== 背景の角丸四角 ===== */
+        .bg-shapes {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-shapes .shape {
+            position: absolute;
+            border-radius: 6px;
         }
 
         /* ===== ヒーロー ===== */
         .hero {
             position: relative;
-            background: linear-gradient(160deg, #e8f5f0 0%, #d4efe6 40%, #c0e8db 100%);
-            padding: 100px 24px 120px;
-            text-align: center;
+            background: #e8f5f0;
+            padding: 100px 24px 80px;
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .hero-inner {
-            max-width: 760px;
+            position: relative;
+            z-index: 1;
+            max-width: 740px;
             margin: 0 auto;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 60px;
+            gap: 56px;
         }
 
         .hero-text {
@@ -54,8 +80,8 @@
         .hero-mockup {
             width: 220px;
             border-radius: 28px;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
-            transform: rotateY(-8deg) rotateX(2deg);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.14);
+            transform: rotateY(-6deg) rotateX(2deg);
             transition: transform 0.4s ease;
         }
 
@@ -64,424 +90,370 @@
         }
 
         .hero-logo {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
             margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0, 153, 119, 0.2);
+            box-shadow: 0 6px 24px rgba(29, 158, 117, 0.2);
         }
 
         .hero h1 {
-            font-size: 2.8em;
-            font-weight: 900;
-            color: #1a3a2f;
-            letter-spacing: 0.04em;
+            font-size: 2.6em;
+            font-weight: 700;
+            color: #1a4a38;
+            letter-spacing: 0.02em;
             margin-bottom: 16px;
         }
 
         .hero-subtitle {
-            font-size: 1.1em;
-            color: #3d6b5a;
+            font-size: 1.05em;
+            color: #3d7a5e;
             font-weight: 400;
-            max-width: 400px;
+            max-width: 360px;
             margin-bottom: 36px;
-            line-height: 1.9;
+            line-height: 2;
         }
 
-        .hero-cta {
+        .btn-primary {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: #009977;
+            background: #1d9e75;
             color: #fff;
-            padding: 16px 36px;
-            border-radius: 50px;
+            padding: 15px 32px;
+            border-radius: 12px;
             text-decoration: none;
             font-weight: 700;
-            font-size: 1em;
+            font-size: 0.95em;
             transition: all 0.3s;
-            box-shadow: 0 4px 20px rgba(0, 153, 119, 0.3);
+            box-shadow: 0 4px 16px rgba(29, 158, 117, 0.25);
         }
 
-        .hero-cta:hover {
-            background: #007a63;
+        .btn-primary:hover {
+            background: #17875f;
             transform: translateY(-2px);
-            box-shadow: 0 8px 28px rgba(0, 153, 119, 0.35);
+            box-shadow: 0 8px 24px rgba(29, 158, 117, 0.3);
         }
 
-        .hero-cta svg {
-            width: 20px;
-            height: 20px;
+        .btn-primary svg {
+            width: 18px;
+            height: 18px;
             fill: currentColor;
         }
 
-        /* 波形区切り */
-        .wave {
-            display: block;
-            width: 100%;
-            line-height: 0;
-        }
-
-        .wave svg {
-            width: 100%;
-            height: 60px;
-            display: block;
-        }
-
-        /* ===== スクリーンショットショーケース ===== */
-        .showcase {
+        /* ===== 共感 ===== */
+        .empathy {
+            position: relative;
             background: #fff;
-            padding: 80px 24px 60px;
+            padding: 100px 24px;
             text-align: center;
         }
 
-        .showcase-scroll {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 24px;
-            max-width: 900px;
+        .empathy-quote {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #1a4a38;
+            line-height: 1.6;
+            margin-bottom: 36px;
+        }
+
+        .empathy-body {
+            max-width: 480px;
             margin: 0 auto;
+            font-size: 1em;
+            color: #5a8a72;
+            line-height: 2.2;
         }
 
-        .phone-frame {
-            transition: transform 0.3s;
+        .empathy-body p {
+            margin-bottom: 16px;
         }
 
-        .phone-frame:hover {
-            transform: translateY(-8px);
+        .empathy-close {
+            margin-top: 28px;
+            font-size: 0.95em;
+            color: #8aaa9a;
+            line-height: 2;
         }
 
-        .phone-frame img {
-            width: 100%;
-            border-radius: 24px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        /* ===== 解決 ===== */
+        .solution {
+            position: relative;
+            background: #f4faf7;
+            padding: 100px 24px;
         }
 
-        .phone-label {
-            margin-top: 12px;
-            font-size: 0.85em;
-            color: #888;
-            font-weight: 500;
-        }
-
-        /* ===== セクション共通 ===== */
-        .section {
-            max-width: 860px;
+        .solution-inner {
+            max-width: 800px;
             margin: 0 auto;
-            padding: 80px 24px;
+            text-align: center;
         }
 
         .section-label {
             display: inline-block;
-            background: #e8f5f0;
-            color: #009977;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.8em;
+            font-size: 0.75em;
             font-weight: 700;
-            letter-spacing: 0.08em;
-            margin-bottom: 16px;
+            color: #1d9e75;
+            letter-spacing: 0.12em;
+            margin-bottom: 12px;
         }
 
         .section-title {
-            font-size: 2em;
-            font-weight: 900;
-            color: #1a3a2f;
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #1a4a38;
             margin-bottom: 16px;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
         .section-desc {
-            font-size: 1em;
-            color: #666;
-            max-width: 560px;
-            margin-bottom: 48px;
+            font-size: 0.95em;
+            color: #5a8a72;
+            max-width: 480px;
+            margin: 0 auto 48px;
+            line-height: 1.8;
         }
 
-        /* ===== 機能カード ===== */
-        .features-grid {
+        /* スクリーンショット */
+        .screenshots {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 56px;
+        }
+
+        .screenshot {
+            transition: transform 0.3s;
+        }
+
+        .screenshot:hover {
+            transform: translateY(-6px);
+        }
+
+        .screenshot img {
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+
+        .screenshot-label {
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #8aaa9a;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* 機能カード */
+        .features {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
+            gap: 16px;
         }
 
         .feature-card {
-            background: #fafcfb;
-            border: 1px solid #e8f0ed;
-            border-radius: 20px;
-            padding: 32px 24px;
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px 22px;
+            border: 1px solid #dceee6;
             transition: all 0.3s;
         }
 
         .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(0, 153, 119, 0.06);
-            border-color: #c8e6df;
-        }
-
-        .feature-icon {
-            width: 44px;
-            height: 44px;
-            background: #e8f5f0;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
-            color: #009977;
-        }
-
-        .feature-icon .material-icons-outlined {
-            font-size: 24px;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(29, 158, 117, 0.06);
         }
 
         .feature-card h3 {
-            font-size: 1.05em;
+            font-size: 0.95em;
             font-weight: 700;
-            color: #1a3a2f;
-            margin-bottom: 8px;
+            color: #1a4a38;
+            margin-bottom: 6px;
         }
 
         .feature-card p {
-            font-size: 0.88em;
-            color: #777;
+            font-size: 0.85em;
+            color: #6a9a84;
             line-height: 1.7;
         }
 
-        /* ===== プレミアム ===== */
-        .premium-section {
-            background: linear-gradient(160deg, #f0faf7 0%, #e4f3ed 100%);
-        }
-
-        .premium-inner {
-            max-width: 860px;
-            margin: 0 auto;
-            padding: 80px 24px;
+        /* ===== 信頼 ===== */
+        .trust {
+            position: relative;
+            background: #f7fbf9;
+            padding: 100px 24px;
             text-align: center;
         }
 
-        .premium-badge {
-            display: inline-block;
-            background: #009977;
-            color: #fff;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            margin-bottom: 16px;
-        }
-
-        .premium-title {
-            font-size: 1.8em;
-            font-weight: 900;
-            color: #1a3a2f;
-            margin-bottom: 12px;
-        }
-
-        .premium-desc {
-            color: #666;
-            margin-bottom: 32px;
-        }
-
-        .premium-tags {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-            max-width: 500px;
+        .trust-inner {
+            max-width: 520px;
             margin: 0 auto;
+            position: relative;
         }
 
-        .premium-tag {
-            background: #fff;
-            padding: 10px 20px;
-            border-radius: 24px;
-            font-size: 0.9em;
-            color: #009977;
-            font-weight: 600;
-            border: 1px solid #c8e6df;
-            box-shadow: 0 2px 8px rgba(0, 153, 119, 0.04);
+        .trust-quote-mark {
+            font-size: 5em;
+            color: #1d9e75;
+            opacity: 0.1;
+            font-family: Georgia, serif;
+            line-height: 1;
+            margin-bottom: -20px;
         }
 
-        /* ===== 理念 ===== */
-        .philosophy {
-            text-align: center;
+        .trust-text {
+            font-size: 1.1em;
+            color: #3d7a5e;
+            line-height: 2.2;
+            font-weight: 400;
+            margin-bottom: 24px;
         }
 
-        .philosophy-text {
-            font-size: 1.2em;
-            color: #3d6b5a;
-            max-width: 540px;
-            margin: 0 auto;
-            line-height: 2;
-            font-weight: 500;
+        .trust-credit {
+            font-size: 0.85em;
+            color: #8aaa9a;
         }
 
         /* ===== CTA ===== */
         .cta {
+            position: relative;
+            background: #1a4a38;
+            padding: 100px 24px;
             text-align: center;
-            padding: 80px 24px;
+            overflow: hidden;
+        }
+
+        .cta-inner {
+            position: relative;
+            z-index: 1;
         }
 
         .cta h2 {
-            font-size: 1.8em;
-            font-weight: 900;
-            color: #1a3a2f;
+            font-size: 1.6em;
+            font-weight: 700;
+            color: #fff;
             margin-bottom: 12px;
         }
 
-        .cta p {
-            color: #666;
-            margin-bottom: 32px;
+        .cta-sub {
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 36px;
+            font-size: 0.9em;
         }
 
-        .cta-btn {
+        .btn-cta {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: #009977;
+            background: #1d9e75;
             color: #fff;
-            padding: 18px 44px;
-            border-radius: 50px;
+            padding: 16px 36px;
+            border-radius: 12px;
             text-decoration: none;
             font-weight: 700;
-            font-size: 1.05em;
+            font-size: 1em;
             transition: all 0.3s;
-            box-shadow: 0 4px 20px rgba(0, 153, 119, 0.25);
+            box-shadow: 0 4px 20px rgba(29, 158, 117, 0.3);
         }
 
-        .cta-btn:hover {
-            background: #007a63;
+        .btn-cta:hover {
+            background: #22b585;
             transform: translateY(-2px);
+        }
+
+        .btn-cta svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .cta-note {
+            margin-top: 16px;
+            font-size: 0.8em;
+            color: rgba(255, 255, 255, 0.4);
         }
 
         /* ===== フッター ===== */
         .footer {
-            background: #f8faf9;
+            background: #1a4a38;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
             text-align: center;
-            padding: 48px 24px;
-            border-top: 1px solid #e8f0ed;
+            padding: 32px 24px;
         }
 
         .footer-links {
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .footer-links a {
-            color: #009977;
+            color: rgba(255, 255, 255, 0.5);
             text-decoration: none;
-            margin: 0 16px;
-            font-weight: 500;
-            font-size: 0.9em;
-        }
-
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-
-        .footer-contact {
-            margin-bottom: 16px;
-        }
-
-        .footer-contact a {
-            color: #888;
-            text-decoration: none;
+            margin: 0 14px;
             font-size: 0.85em;
         }
 
-        .footer-contact a:hover {
-            color: #009977;
+        .footer-links a:hover {
+            color: rgba(255, 255, 255, 0.8);
         }
 
-        .footer-copy {
-            color: #bbb;
+        .footer-contact a {
+            color: rgba(255, 255, 255, 0.35);
+            text-decoration: none;
             font-size: 0.8em;
         }
 
-        /* ===== レスポンシブ ===== */
-        @media (max-width: 768px) {
-            .hero {
-                padding: 70px 20px 100px;
-            }
-
-            .hero-inner {
-                justify-content: center;
-            }
-
-            .hero-text {
-                text-align: center;
-                max-width: 100%;
-            }
-
-            .hero-subtitle {
-                margin: 0 auto 36px;
-            }
-
-            .hero-visual {
-                display: none;
-            }
-
-            .hero h1 {
-                font-size: 2em;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-
-            .showcase-scroll {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .section {
-                padding: 60px 20px;
-            }
-
-            .section-title {
-                font-size: 1.5em;
-            }
-
-            .premium-inner {
-                padding: 60px 20px;
-            }
+        .footer-copy {
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 0.75em;
+            margin-top: 12px;
         }
 
-        @media (max-width: 480px) {
-            .hero h1 {
-                font-size: 1.7em;
-            }
-
-            .showcase-scroll {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 16px;
-            }
-        }
-
-        /* ===== フェードインアニメーション ===== */
+        /* ===== フェードイン ===== */
         .fade-in {
             opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.6s ease, transform 0.6s ease;
+            transform: translateY(24px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
         }
 
         .fade-in.visible {
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* ===== レスポンシブ ===== */
+        @media (max-width: 768px) {
+            .hero { padding: 80px 20px 60px; min-height: auto; }
+            .hero-inner { justify-content: center; }
+            .hero-text { text-align: center; max-width: 100%; }
+            .hero-subtitle { margin: 0 auto 36px; }
+            .hero-visual { display: none; }
+            .hero h1 { font-size: 2em; }
+            .empathy { padding: 72px 20px; }
+            .empathy-quote { font-size: 1.4em; }
+            .solution { padding: 72px 20px; }
+            .screenshots { grid-template-columns: repeat(2, 1fr); }
+            .features { grid-template-columns: 1fr; }
+            .trust { padding: 72px 20px; }
+            .cta { padding: 72px 20px; }
+            .section-title { font-size: 1.4em; }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 1.7em; }
+            .screenshots { gap: 12px; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- ヒーロー -->
+    <!-- ① ヒーロー -->
     <section class="hero">
+        <div class="bg-shapes" id="hero-shapes"></div>
         <div class="hero-inner">
-            <div class="hero-text">
+            <div class="hero-text fade-in">
                 <img src="assets/icons/app_icon.jpeg" alt="シューマイ" class="hero-logo">
                 <h1>シューマイ</h1>
                 <p class="hero-subtitle">考えたこと、やったことが<br>流れて積み上がらない。<br>そんなもどかしさに寄り添うアプリ。</p>
-                <a href="https://apps.apple.com/jp/app/%E3%82%B7%E3%83%A5%E3%83%BC%E3%83%9E%E3%82%A4/id6747564159" class="hero-cta">
+                <a href="https://apps.apple.com/jp/app/%E3%82%B7%E3%83%A5%E3%83%BC%E3%83%9E%E3%82%A4/id6747564159" class="btn-primary">
                     <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                     App Store でダウンロード
                 </a>
@@ -492,126 +464,109 @@
         </div>
     </section>
 
-    <!-- 波形 -->
-    <div class="wave">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
-            <path d="M0,60 C360,0 1080,0 1440,60 L1440,60 L0,60 Z" fill="#fff"/>
-        </svg>
-    </div>
+    <!-- ② 共感 -->
+    <section class="empathy">
+        <div class="bg-shapes" id="empathy-shapes"></div>
+        <div class="fade-in" style="position: relative; z-index: 1;">
+            <p class="empathy-quote">「前回、どこまでやったっけ」</p>
+            <div class="empathy-body">
+                <p>久しぶりに趣味を再開したら、<br>前回の続きが分からない。</p>
+                <p>調べたこと、考えたこと、<br>せっかくの積み重ねがどこかに消えている。</p>
+            </div>
+            <p class="empathy-close">また最初から。<br>そんな繰り返しを、終わりにしませんか。</p>
+        </div>
+    </section>
 
-    <!-- スクリーンショット -->
-    <section class="showcase fade-in">
-        <div class="showcase-scroll">
-            <div class="phone-frame">
-                <img src="images/screen_home.png" alt="ホーム画面">
-                <div class="phone-label">ホーム</div>
+    <!-- ③ 解決 -->
+    <section class="solution">
+        <div class="solution-inner fade-in">
+            <span class="section-label">SOLUTION</span>
+            <h2 class="section-title">記録が、続きを教えてくれる</h2>
+            <p class="section-desc">メモを残す。習慣を記録する。構造を整理する。<br>シューマイが、あなたの趣味を積み上げます。</p>
+
+            <div class="screenshots">
+                <div class="screenshot">
+                    <img src="images/screen_home.png" alt="ホーム画面">
+                    <div class="screenshot-label">趣味を一覧で管理</div>
+                </div>
+                <div class="screenshot">
+                    <img src="images/screen_detail.png" alt="趣味詳細">
+                    <div class="screenshot-label">写真とメモで記録</div>
+                </div>
+                <div class="screenshot">
+                    <img src="images/screen_habit.png" alt="習慣トラッカー">
+                    <div class="screenshot-label">毎日の習慣を確認</div>
+                </div>
+                <div class="screenshot">
+                    <img src="images/screen_tree.png" alt="樹形図">
+                    <div class="screenshot-label">目標を構造で整理</div>
+                </div>
             </div>
-            <div class="phone-frame">
-                <img src="images/screen_detail.png" alt="趣味詳細">
-                <div class="phone-label">趣味詳細</div>
-            </div>
-            <div class="phone-frame">
-                <img src="images/screen_habit.png" alt="習慣トラッカー">
-                <div class="phone-label">習慣</div>
-            </div>
-            <div class="phone-frame">
-                <img src="images/screen_tree.png" alt="樹形図">
-                <div class="phone-label">樹形図</div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <h3>趣味ごとに記録が残る</h3>
+                    <p>やったこと・考えたことを、趣味ごとに積み上げていける。</p>
+                </div>
+                <div class="feature-card">
+                    <h3>再開しても迷わない</h3>
+                    <p>前回の続きからすぐ始められる。もう「最初から」にならない。</p>
+                </div>
+                <div class="feature-card">
+                    <h3>複数の趣味を一元管理</h3>
+                    <p>カテゴリーで整理して、いつでも振り返れる。</p>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- 機能紹介 -->
-    <section class="section fade-in">
-        <span class="section-label">FEATURES</span>
-        <h2 class="section-title">趣味を、もっと豊かに</h2>
-        <p class="section-desc">記録して、振り返って、整理する。続けるほどに、あなたの趣味が積み上がります。</p>
+    <!-- ④ 信頼（ビフォーアフター） -->
+    <section class="trust">
+        <div class="trust-inner fade-in">
+            <span class="section-label">STORY</span>
+            <h2 class="section-title">変わったこと</h2>
 
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon"><span class="material-icons-outlined">edit_note</span></div>
-                <h3>メモと写真</h3>
-                <p>活動の記録を写真付きメモで残せます。ふとした時に振り返る楽しみ。</p>
+            <div style="display: flex; gap: 20px; margin: 36px 0; text-align: center; flex-wrap: wrap; justify-content: center;">
+                <div style="flex: 1; min-width: 220px; background: #fff; border-radius: 14px; padding: 24px; border: 1px solid #dceee6;">
+                    <p style="font-size: 0.75em; font-weight: 700; color: #8aaa9a; margin-bottom: 10px; letter-spacing: 0.08em;">BEFORE</p>
+                    <p style="font-size: 0.95em; color: #5a8a72; line-height: 1.9;">
+                        趣味を再開<br>
+                        → 何してたか分からない<br>
+                        → やる気が消える
+                    </p>
+                </div>
+                <div style="flex: 1; min-width: 220px; background: #fff; border-radius: 14px; padding: 24px; border: 2px solid #1d9e75;">
+                    <p style="font-size: 0.75em; font-weight: 700; color: #1d9e75; margin-bottom: 10px; letter-spacing: 0.08em;">AFTER</p>
+                    <p style="font-size: 0.95em; color: #1a4a38; line-height: 1.9;">
+                        趣味を再開<br>
+                        → 記録を見返す<br>
+                        → すぐ続きから始められる
+                    </p>
+                </div>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon"><span class="material-icons-outlined">check_circle</span></div>
-                <h3>習慣トラッカー</h3>
-                <p>日々の習慣をワンタップで記録。過去の記録も簡単に修正できます。</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><span class="material-icons-outlined">calendar_month</span></div>
-                <h3>活動カレンダー</h3>
-                <p>カレンダーで活動を一覧表示。週間・月間・年間で傾向を把握。</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><span class="material-icons-outlined">account_tree</span></div>
-                <h3>樹形図</h3>
-                <p>目標やスキルを階層構造で整理。進捗の可視化に。</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><span class="material-icons-outlined">lock</span></div>
-                <h3>プライバシー</h3>
-                <p>データは端末内に保存。アカウント不要で安心。</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><span class="material-icons-outlined">crop</span></div>
-                <h3>画像トリミング</h3>
-                <p>アイコンやヘッダーを好きな範囲で切り取り。</p>
-            </div>
+
+            <div class="trust-quote-mark">"</div>
+            <p class="trust-text">
+                多趣味で飽きっぽい自分が、<br>
+                ちゃんと積み上げられるようになった。<br>
+                そんな体験から生まれたアプリです。
+            </p>
+            <p class="trust-credit">— 開発者より</p>
         </div>
     </section>
 
-    <!-- 波形 -->
-    <div class="wave">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
-            <path d="M0,0 C360,60 1080,60 1440,0 L1440,60 L0,60 Z" fill="#f0faf7"/>
-        </svg>
-    </div>
-
-    <!-- プレミアム -->
-    <section class="premium-section">
-        <div class="premium-inner fade-in">
-            <span class="premium-badge">PREMIUM</span>
-            <h2 class="premium-title">もっと便利に</h2>
-            <p class="premium-desc">プレミアムプランで、すべての機能を使いこなす。</p>
-            <div class="premium-tags">
-                <span class="premium-tag">カテゴリー管理</span>
-                <span class="premium-tag">背景画像</span>
-                <span class="premium-tag">全期間の活動記録</span>
-                <span class="premium-tag">樹形図の深い階層</span>
-                <span class="premium-tag">習慣ページ</span>
-            </div>
+    <!-- ⑤ CTA -->
+    <section class="cta">
+        <div class="bg-shapes" id="cta-shapes"></div>
+        <div class="cta-inner fade-in">
+            <p class="cta-sub" style="margin-bottom: 12px;">趣味の記録、始めてみませんか。</p>
+            <h2 style="font-size: 1.8em; margin-bottom: 32px;">久しぶりの再開でも、まるで昨日のように。</h2>
+            <a href="https://apps.apple.com/jp/app/%E3%82%B7%E3%83%A5%E3%83%BC%E3%83%9E%E3%82%A4/id6747564159" class="btn-cta">
+                <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                App Store でダウンロード
+            </a>
+            <p class="cta-note">無料で始められます</p>
         </div>
-    </section>
-
-    <!-- 波形 -->
-    <div class="wave">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
-            <path d="M0,60 C360,0 1080,0 1440,60 L1440,60 L0,60 Z" fill="#fff"/>
-        </svg>
-    </div>
-
-    <!-- 理念 -->
-    <section class="section philosophy fade-in">
-        <span class="section-label">CONCEPT</span>
-        <h2 class="section-title">久しぶりでも、大丈夫</h2>
-        <p class="philosophy-text">
-            趣味を中断しても、<br>
-            再開したときに何をしていたか見えてくる。<br><br>
-            記録は、未来の自分への手がかり。<br>
-            シューマイは、あなたの「好き」を<br>
-            そっと積み上げるアプリです。
-        </p>
-    </section>
-
-    <!-- CTA -->
-    <section class="cta fade-in">
-        <h2>今日から、記録を始めよう</h2>
-        <p>無料でダウンロードできます。</p>
-        <a href="https://apps.apple.com/jp/app/%E3%82%B7%E3%83%A5%E3%83%BC%E3%83%9E%E3%82%A4/id6747564159" class="cta-btn">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-            App Store でダウンロード
-        </a>
     </section>
 
     <!-- フッター -->
@@ -623,20 +578,98 @@
         <div class="footer-contact">
             <a href="mailto:shuumyapp@gmail.com">お問い合わせ: shuumyapp@gmail.com</a>
         </div>
-        <p class="footer-copy">&copy; 2026 tomurango. All rights reserved.</p>
+        <p class="footer-copy">shuumy.jp &mdash; &copy; 2026 tomurango</p>
     </footer>
 
-    <!-- スクロールアニメーション -->
     <script>
+        // フェードインアニメーション
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
+                if (entry.isIntersecting) entry.target.classList.add('visible');
             });
-        }, { threshold: 0.1 });
-
+        }, { threshold: 0.15 });
         document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+        // 背景の角丸四角を生成（端に寄せてコンテンツを邪魔しない）
+        function createShapes(containerId, shapes, colors) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            shapes.forEach(s => {
+                const el = document.createElement('div');
+                el.className = 'shape';
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                el.style.cssText = `
+                    width: ${s.w}px; height: ${s.h}px;
+                    left: ${s.x}%; top: ${s.y}%;
+                    background: ${color};
+                    opacity: ${s.o};
+                    transform: rotate(${s.r || 0}deg);
+                    border-radius: ${s.br || 6}px;
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // ① ヒーロー: 左右+中央後ろにも（密度高め）
+        createShapes('hero-shapes', [
+            // 左側
+            { w: 48, h: 48, x: 1, y: 5, o: 0.12 },
+            { w: 32, h: 24, x: 6, y: 8, o: 0.06 },
+            { w: 40, h: 56, x: 2, y: 22, o: 0.09 },
+            { w: 24, h: 24, x: 8, y: 28, o: 0.05 },
+            { w: 56, h: 32, x: 1, y: 42, o: 0.1 },
+            { w: 32, h: 40, x: 7, y: 46, o: 0.07 },
+            { w: 24, h: 32, x: 12, y: 38, o: 0.04 },
+            { w: 48, h: 40, x: 2, y: 62, o: 0.08 },
+            { w: 32, h: 32, x: 8, y: 68, o: 0.06 },
+            { w: 40, h: 24, x: 1, y: 82, o: 0.1 },
+            { w: 24, h: 48, x: 6, y: 85, o: 0.05 },
+            { w: 32, h: 24, x: 12, y: 78, o: 0.04 },
+            // 右側
+            { w: 40, h: 40, x: 86, y: 5, o: 0.1 },
+            { w: 32, h: 48, x: 92, y: 8, o: 0.07 },
+            { w: 48, h: 32, x: 84, y: 22, o: 0.06 },
+            { w: 24, h: 40, x: 91, y: 28, o: 0.09 },
+            { w: 40, h: 48, x: 87, y: 42, o: 0.08 },
+            { w: 32, h: 24, x: 93, y: 45, o: 0.05 },
+            { w: 56, h: 40, x: 83, y: 58, o: 0.1 },
+            { w: 24, h: 32, x: 91, y: 65, o: 0.06 },
+            { w: 48, h: 32, x: 86, y: 78, o: 0.08 },
+            { w: 32, h: 48, x: 92, y: 82, o: 0.05 },
+            // コンテンツ後ろ（薄め）
+            { w: 28, h: 28, x: 22, y: 8, o: 0.035 },
+            { w: 36, h: 24, x: 42, y: 5, o: 0.03 },
+            { w: 24, h: 36, x: 62, y: 10, o: 0.03 },
+            { w: 32, h: 20, x: 35, y: 85, o: 0.03 },
+            { w: 20, h: 28, x: 55, y: 88, o: 0.025 },
+            { w: 24, h: 24, x: 75, y: 3, o: 0.03 },
+        ], ['#1d9e75', '#1a4a38']);
+
+        // ② 共感: 端+うっすら中央
+        createShapes('empathy-shapes', [
+            { w: 32, h: 32, x: 2, y: 15, o: 0.04 },
+            { w: 24, h: 40, x: 5, y: 50, o: 0.03 },
+            { w: 28, h: 28, x: 93, y: 25, o: 0.04 },
+            { w: 20, h: 32, x: 90, y: 65, o: 0.03 },
+            { w: 20, h: 20, x: 25, y: 70, o: 0.02 },
+            { w: 24, h: 16, x: 70, y: 80, o: 0.02 },
+        ], ['#1d9e75', '#c8e6df']);
+
+        // ⑤ CTA: ダーク背景に多め+中央にも
+        createShapes('cta-shapes', [
+            { w: 44, h: 44, x: 2, y: 10, o: 0.1 },
+            { w: 32, h: 48, x: 3, y: 45, o: 0.07 },
+            { w: 24, h: 24, x: 8, y: 30, o: 0.05 },
+            { w: 48, h: 32, x: 1, y: 75, o: 0.08 },
+            { w: 40, h: 40, x: 88, y: 12, o: 0.1 },
+            { w: 32, h: 48, x: 92, y: 40, o: 0.07 },
+            { w: 24, h: 32, x: 85, y: 55, o: 0.05 },
+            { w: 44, h: 28, x: 90, y: 78, o: 0.08 },
+            { w: 20, h: 20, x: 30, y: 20, o: 0.04 },
+            { w: 24, h: 16, x: 55, y: 80, o: 0.04 },
+            { w: 16, h: 24, x: 70, y: 15, o: 0.03 },
+            { w: 20, h: 20, x: 40, y: 70, o: 0.03 },
+        ], ['#1d9e75', '#22b585']);
     </script>
 
 </body>
